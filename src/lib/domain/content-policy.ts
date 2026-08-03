@@ -6,7 +6,7 @@ const prohibitedRules: Array<{ pattern: RegExp; reason: string }> = [
     reason: "sexual content involving minors",
   },
   {
-    pattern: /\b(?:survey(?:ing)?|recruit(?:ing)?|target(?:ing)?|ask(?:ing)?|opinions? (?:of|from)|feedback from|participants?|respondents?)\b[\s\S]{0,100}\b(?:child|children|minor|under[- ]?18|middle[- ]?school(?:ers| students?| pupils?)?|high[- ]?school(?:ers| students?| pupils?)?|teen(?:ager)?s?)\b/i,
+    pattern: /\b(?:survey(?:ing)?|recruit(?:ing)?|target(?:ing)?|ask(?:ing)?|opinions? (?:of|from)|feedback from)\s+(?!(?:[a-z0-9'-]+\s+){0,3}(?:adults?|parents?|teachers?|caregivers?|guardians?)\b)(?:[a-z0-9'-]+\s+){0,5}(?:child|children|minor|under[- ]?18|middle[- ]?school(?:ers| students?| pupils?)?|high[- ]?school(?:ers| students?| pupils?)?|teen(?:ager)?s?)\b/i,
     reason: "surveys targeting minors",
   },
   {

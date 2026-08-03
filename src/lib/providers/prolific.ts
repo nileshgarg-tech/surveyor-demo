@@ -1172,7 +1172,9 @@ function extractNextLink(links: Record<string, unknown> | undefined): string | u
   if (next === undefined || next === null || next === "") return undefined;
   if (typeof next === "string") return next;
   if (isRecord(next)) {
+    if (next.href === null || next.href === "") return undefined;
     if (typeof next.href === "string") return next.href;
+    if (next.url === null || next.url === "") return undefined;
     if (typeof next.url === "string") return next.url;
   }
   throw schemaDrift("Prolific returned an unrecognized filter pagination link.");

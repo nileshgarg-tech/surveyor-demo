@@ -274,7 +274,7 @@ describe("live filter catalog", () => {
             max: "100",
           },
         ],
-        _links: { next: null },
+        _links: { next: { href: null, title: "Next" } },
       });
     });
     const result = await makeClient(fetchImpl).fetchFilterCatalog();
