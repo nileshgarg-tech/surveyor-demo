@@ -1,82 +1,78 @@
 # Surveyor demo
 
-Surveyor turns a natural-language research request into a short, catalog-grounded Prolific survey, recruits real paid adults, and produces a visual directional report from deterministic counts.
+Surveyor is a scaled-down research-operations prototype that turns a plain-English study request into a short, paid Prolific survey and a concise visual report. It is designed as a bounded poster-demo experience: one event organizer can describe a research goal, review an AI-assisted survey proposal, launch a controlled study, and inspect directional results without exposing participant identifiers.
 
-This repository implements the bounded poster-demo flow in `SURVEYOR_CODEX_BUILD_SPEC.md`. It has no accounts or simulated participants. Supabase is the source of truth; all browser writes go through Next.js route handlers.
+The project demonstrates how an AI assistant can support the operational parts of survey research while keeping money, eligibility, publication, response storage, and reporting under explicit deterministic controls.
 
-## Local setup
+## What it demonstrates
 
-Requirements:
+- A conversational intake flow that turns a research goal into a structured survey brief.
+- A three-to-five-question survey builder with validation for wording, response options, duration, reward, and research-contact requirements.
+- Catalog-grounded Prolific targeting: supported audiences use exact provider filters; approximations remain visible and require explicit acceptance.
+- A review screen that shows the actual recruited audience, participant-facing questions, estimated completion time, reward, and provider-confirmed total cost before launch.
+- Event-link access that uses a signed, short-lived browser session instead of accounts, sign-up, or a PIN.
+- A privacy-preserving participant flow for consent and response collection. Organizer response views deliberately omit Prolific participant IDs and fingerprints.
+- A deterministic results pipeline that calculates counts and percentages before using an LLM only for a tightly constrained, directional narrative.
 
-- Node.js 24 or newer
-- A Supabase project or compatible local Supabase stack
-- Gemini and Prolific credentials for live design/provider checks
-- Optional OpenAI credentials plus an explicit model for transient Gemini fallback
-
-Install and configure:
-
-```bash
-npm ci
-cp .env.example .env.local
-```
-
-Fill `.env.local`; never put real credentials in `.env.example`. Use independent random values of at least 32 characters for `EVENT_LAUNCH_TOKEN`, `SESSION_SIGNING_SECRET`, and `CRON_SECRET`.
-
-Apply all migrations in order:
+## Research flow
 
 ```text
-supabase/migrations/202608030001_initial.sql
-supabase/migrations/202608030002_recovery_hardening.sql
-supabase/migrations/202608030003_runtime_control.sql
+Research goal
+  → AI-assisted intake
+  → survey + targeting preview
+  → explicit organizer review
+  → controlled Prolific launch
+  → mobile participant responses
+  → deterministic visual report
 ```
 
-With a linked Supabase CLI project, `supabase db push` applies the pending migrations. Then start the app:
+Supabase is the source of truth for the lifecycle. The browser communicates through Next.js route handlers; it never receives service credentials or direct database-write authority.
 
-```bash
-npm run dev
-```
+## Design and safety controls
 
-Open `http://localhost:3000`. Preview-only use needs no event link. Paid launch authority comes from:
+Surveyor treats a paid study as a stateful workflow rather than a simple API request.
 
-```text
-http://localhost:3000/#event=<EVENT_LAUNCH_TOKEN>
-```
+- Budget is reserved using the provider-confirmed USD cost, then either committed or safely voided.
+- Study and event spend caps, a maximum of three concurrent studies, and a one-study-per-event-session limit are enforced in the database.
+- Provider operations use idempotency keys, exact reconciliation, bounded retry rules, and recovery jobs for stale launches.
+- An unpublished draft may receive at most two total publish attempts. Automatic abandonment requires confirmed draft deletion.
+- Publishing, pausing, stopping, approval handling, slot release, and report creation are evidence-gated database transitions.
+- All application tables use forced row-level security. Participant-facing routes use `no-store` caching and redact Prolific identifiers.
+- Unsupported targeting cannot be silently invented; it is shown as unsupported or as a clearly labeled proxy.
 
-The browser exchanges the fragment once for a signed HttpOnly event-session cookie and removes it from history.
+## Technology
+
+- Next.js 16, React 19, TypeScript, and Zod
+- Supabase/PostgreSQL with SQL migrations, RPCs, locks, and forced RLS
+- Gemini for structured intake and narrative reporting, with optional explicit OpenAI fallback
+- Prolific API adapter for targeting, pricing, draft creation, publishing, status checks, and participant completion handling
+- Vitest and ESLint for automated verification
+
+## Repository guide
+
+| Location | Purpose |
+| --- | --- |
+| `src/app` | Application pages and server routes |
+| `src/components` | Organizer and participant interfaces |
+| `src/lib/domain` | Schemas, targeting logic, money rules, and report calculations |
+| `src/lib/services` | Survey lifecycle, participant, recovery, and reporting orchestration |
+| `src/lib/providers` | Gemini, OpenAI fallback, and Prolific adapters |
+| `src/lib/security` | Event sessions, cryptography, rate limiting, and request protection |
+| `supabase/migrations` | Database schema, RLS, atomic lifecycle RPCs, and runtime controls |
+| `tests` | Acceptance-focused unit and invariant coverage |
 
 ## Verification
 
-Run the complete local gate:
+Run the full local verification gate with:
 
 ```bash
 npm run verify
 ```
 
-This runs strict TypeScript, ESLint, Vitest, and a production Next.js build. Provider adapter tests use mocked HTTP responses and do not create studies or spend money.
+This runs strict TypeScript checking, ESLint, 125 Vitest tests, and an optimized production build. The test suite covers survey structure, provider payload validation, targeting behavior, budget/concurrency invariants, event-session security, participant privacy, idempotency, stale-launch recovery, and report generation.
 
-The schema has also been designed for a clean PostgreSQL 17 migration run. Validated environment controls are synchronized idempotently into the locked database control row. Important state transitions are database RPCs: exact-cost reservation, budget commit/void, slot release, idempotent submission, PAUSE/STOP confirmation, report claims, and stale recovery. All application tables have forced RLS and no browser-role policies.
+The repository also includes [ACCEPTANCE_VERIFICATION.md](ACCEPTANCE_VERIFICATION.md), which distinguishes locally proven behavior from criteria that require configured third-party services and a real paid Prolific run.
 
-## Operating model
+## Demo boundaries
 
-- `vercel.json` invokes `/api/internal/reconcile-stale` every two minutes.
-- The endpoint requires `Authorization: Bearer $CRON_SECRET`, processes bounded batches, and directly runs stale provider recovery, report recovery, recruiting-status checks, and final STOP checks.
-- Ambiguous paid mutations retain reserved budget and held slots until exact Prolific evidence resolves them.
-- An unpublished draft gets at most two total publish attempts. If it remains unpublished, automatic abandonment occurs only after confirmed deletion.
-- Report calculations are deterministic; Gemini or the configured OpenAI fallback writes only the narrative.
-- Individual responses require the still-valid event session that owns the study and never expose Prolific identifiers.
-
-## Deployment and real paid launch
-
-Production uses Vercel Environment Variables and requires an HTTPS `NEXT_PUBLIC_APP_URL`. Apply migrations before deploying, configure every required live credential, and retain the cron definition.
-
-Deployment and the first real paid Prolific launch are explicit approval gates. Do not perform either from this repository until the project owner has reviewed the environment, caps, project/workspace IDs, and granted approval.
-
-After approval, rehearse in this order:
-
-1. Check `/api/health` for database, Gemini, Prolific project/workspace, USD currency, and balance readiness.
-2. Open the event fragment on a clean browser and confirm it changes to “Event access ready.”
-3. Design a small five-participant survey and verify the provider-confirmed total remains under the configured study and event caps.
-4. Inspect the Prolific draft payload and validated filters before the first publication.
-5. Launch once, complete the mobile participant flow, and confirm automatic approval, reporting, slot release, and the event counter audit.
-
-No deployment or live paid Prolific mutation is part of `npm run verify`.
+This repository contains no credentials, deployed environment, or live Prolific study. The production-facing integrations are implemented and tested with controlled provider responses, but final live validation requires a configured Supabase project, authorized provider credentials, an HTTPS deployment, and owner approval before any paid launch.

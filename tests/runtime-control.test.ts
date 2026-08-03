@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { intakeStateSchema } from "@/lib/domain/schemas";
@@ -90,6 +90,23 @@ describe("deployment controls remain inside specification ceilings", () => {
     ]) {
       expect(read(path), path).toContain("ensureEventControlConfigured()");
     }
+  });
+
+  it("uses a bounded five-minute GitHub Actions recovery scheduler", () => {
+    const workflow = read(".github/workflows/reconcile-stale.yml");
+    const vercelConfigPath = resolve(root, "vercel.json");
+    const vercelConfig = existsSync(vercelConfigPath) ? read("vercel.json") : "";
+    expect(workflow).toContain("cron: \"3-58/5 * * * *\"");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permissions: {}");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).toContain("secrets.SURVEYOR_APP_URL");
+    expect(workflow).toContain("secrets.CRON_SECRET");
+    expect(workflow).toContain("Authorization: Bearer $SURVEYOR_CRON_SECRET");
+    expect(workflow).toContain("--retry-connrefused");
+    expect(workflow).not.toContain("--retry-all-errors");
+    expect(workflow).toContain("/api/internal/reconcile-stale");
+    expect(vercelConfig).not.toContain("\"crons\"");
   });
 });
 

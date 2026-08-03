@@ -6,7 +6,7 @@ This file distinguishes implementation evidence from the live checks that are in
 
 ## Verification runs
 
-- `npm run verify`: passed — strict TypeScript, ESLint, 124/124 Vitest tests, optimized Next.js production build.
+- `npm run verify`: passed — strict TypeScript, ESLint, 125/125 Vitest tests, optimized Next.js production build.
 - PostgreSQL 17 clean run: all three migrations applied with `ON_ERROR_STOP=1`.
 - SQL lifecycle assertions: passed — bounded publish recovery, deletion-only abandonment, PAUSE/STOP evidence-gated retry, slot-release race exclusion, and event-counter audit.
 - Runtime-control assertions: passed — stricter environment settings synchronized atomically; values beyond $25/$500/3 studies were rejected.
@@ -36,9 +36,9 @@ This file distinguishes implementation evidence from the live checks that are in
 | A17 | Individual-response data requires event access | Verified | Page verifies signed, unexpired event session and study ownership before loading rows. |
 | A18 | Stale launches recover or become safely abandoned without consuming slots forever | Verified | Clean PostgreSQL lifecycle assertions prove exact reconciliation, bounded publish, confirmed deletion, atomic void/release, and ambiguous-state retention. |
 | A19 | Finished studies release concurrency without erasing committed spend | Verified | Evidence-gated slot RPC and counter audit prove slot release is independent of lifetime committed budget. |
-| A20 | Dropped reports recover without an open page | Verified | Protected cron directly recovers stale/ready reports with locked claims, bounded attempts, heartbeats, and per-row isolation. |
+| A20 | Dropped reports recover without an open page | Verified | The protected five-minute GitHub Actions workflow invokes the bounded internal recovery endpoint, which directly recovers stale/ready reports with locked claims, bounded attempts, heartbeats, and per-row isolation. |
 | A21 | Refresh/retry cannot duplicate spend, drafts, responses, or reports | Verified | Unique keys, row locks, compare-and-set transitions, request fingerprints, signed restoration, and idempotency tests cover all four resources. |
-| A22 | Typecheck, lint, tests, and production build pass | Verified | `npm run verify` passed with 124 tests across nine files. |
+| A22 | Typecheck, lint, tests, and production build pass | Verified | `npm run verify` passed with 125 tests across nine files. |
 | A23 | Poster screen and participant phones are usable | Partially verified / live gate | Desktop and phone prompt renders passed; responsive/focus/reduced-motion rules exist. Full participant/report device rehearsal awaits configured deployment and live data. |
 
 ## Required-test coverage
@@ -53,8 +53,8 @@ The Section 23 list is covered across:
 - `participant-flow.test.ts`: raw identifier rejection, study matching, signed participant session, completed revisit, idempotent submit, contact rejection, safe API output.
 - `static-safety-invariants.test.ts`: forced RLS, atomic reservation/concurrency, separate money/slot lifecycles, report/PAUSE invariants, route authority and public projections.
 - `recovery-hardening.test.ts`: bounded publish/delete recovery, contextual 404, PAUSE/STOP retry proof, slot race, recorded mutation outcomes, fixed content rules.
-- `runtime-control.test.ts`: unweakenable deployment ceilings, runtime-to-database control synchronization, five-turn intake, launch authority, durable target reporting, manual-finish delay.
+- `runtime-control.test.ts`: unweakenable deployment ceilings, runtime-to-database control synchronization, five-minute scheduled recovery, five-turn intake, launch authority, durable target reporting, manual-finish delay.
 
 ## Remaining gated evidence
 
-No deployment or real Prolific mutation has occurred. Completing A1/A3/A6/A9–A15/A23 at real-service scope requires the owner’s already-requested approval plus configured Supabase, Gemini, Prolific, Vercel, event-session, cron, and research-contact values. Secrets should be configured in `.env.local`/Vercel, never pasted into source or this document.
+No deployment or real Prolific mutation has occurred. Completing A1/A3/A6/A9–A15/A23 at real-service scope requires the owner’s already-requested approval plus configured Supabase, Gemini, Prolific, Vercel, event-session, GitHub Actions scheduler, and research-contact values. Runtime secrets belong in Vercel; `SURVEYOR_APP_URL` and the matching `CRON_SECRET` belong in GitHub Actions repository secrets. Never paste secrets into source or this document.

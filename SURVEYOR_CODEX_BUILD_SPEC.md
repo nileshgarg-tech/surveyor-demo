@@ -368,9 +368,9 @@ Reconciliation runs automatically:
 
 1. before reserving any new launch;
 2. when a study status response reports a stale operation, through an idempotent reconcile request from the client; and
-3. through a protected Vercel cron/internal endpoint that also recovers stale reports.
+3. through a protected internal endpoint invoked by a GitHub Actions workflow every five minutes, which also recovers stale reports.
 
-The cron is required for unattended recovery; page-driven reconciliation only improves latency. Protect it with Vercel's `Authorization: Bearer $CRON_SECRET`, process a bounded batch, and call domain functions directly rather than self-fetching API routes. Recovery actions must be compare-and-set and safe to repeat.
+The scheduled workflow is required for unattended recovery; page-driven reconciliation only improves latency. Store `SURVEYOR_APP_URL` and `CRON_SECRET` as GitHub Actions repository secrets. The workflow sends `Authorization: Bearer $CRON_SECRET` to the deployed internal endpoint, and the endpoint processes a bounded batch by calling domain functions directly rather than self-fetching API routes. Recovery actions must be compare-and-set and safe to repeat. GitHub schedules may be delayed, so correctness must never depend on exact five-minute execution. Public-repository schedules are automatically disabled after 60 days without repository activity, so the operator must confirm that this workflow is enabled before every live event.
 
 ### Provider error policy
 
@@ -483,11 +483,11 @@ Use the simplest recoverable background design:
 1. The response that reaches target atomically persists `ready_to_report` before replying.
 2. Schedule the idempotent report function with Next.js `after()` in a route handler and configure sufficient route `maxDuration`.
 3. If background execution is dropped, the study page sees `ready_to_report` and calls the same report endpoint automatically.
-4. The required recovery cron also claims `ready_to_report` rows even when no page is open.
+4. The required recovery workflow also claims `ready_to_report` rows even when no page is open.
 5. If `reporting` has no heartbeat/report after `REPORT_STALE_MINUTES`, compare-and-set it back to `ready_to_report` and increment the attempt count.
 6. After `MAX_REPORT_ATTEMPTS`, mark `blocked` and expose an explicit retry.
 
-Each attempt reads the immutable snapshot cutoff and upserts the single report row. Do not add a queue service for this demo. Supabase state, compare-and-set transitions, heartbeats, the bounded cron, and repeatable report generation provide recovery.
+Each attempt reads the immutable snapshot cutoff and upserts the single report row. Do not add a queue service for this demo. Supabase state, compare-and-set transitions, heartbeats, the bounded scheduled recovery call, and repeatable report generation provide recovery.
 
 ## 16. Individual responses
 
@@ -589,7 +589,7 @@ APIs/actions:
 - `POST /api/surveys/[id]/submit`
 - `GET /api/internal/reconcile-stale` — protected by `Authorization: Bearer $CRON_SECRET`
 
-Every browser mutation validates content type, same-origin request metadata, shape, authority, lifecycle, rate limit, and idempotency. Researcher mutations require the event session linked to that study; participant mutations require the study-bound participant session. The cron calls domain functions directly. Responses containing study, participant, or provider state use `Cache-Control: no-store`. No API response returns secrets or private Prolific identifiers.
+Every browser mutation validates content type, same-origin request metadata, shape, authority, lifecycle, rate limit, and idempotency. Researcher mutations require the event session linked to that study; participant mutations require the study-bound participant session. The scheduled recovery endpoint calls domain functions directly. Responses containing study, participant, or provider state use `Cache-Control: no-store`. No API response returns secrets or private Prolific identifiers.
 
 ## 20. Visual direction
 
@@ -749,7 +749,7 @@ These implementation assumptions were verified against official documentation on
 - [Prolific create-study fields](https://docs.prolific.com/api-reference/studies/create-study), [study statuses/transitions](https://docs.prolific.com/api-reference/studies/publish-study), and [draft deletion](https://docs.prolific.com/api-reference/studies/delete-study).
 - [Prolific live filters](https://docs.prolific.com/api-reference/filters/get-filters), [eligibility count semantics](https://docs.prolific.com/api-reference/filters/get-eligible-count), and [study cost calculator](https://docs.prolific.com/api-reference/studies/calculate-study-cost).
 - [Prolific workspace balance/currency](https://docs.prolific.com/api-reference/workspaces/get-workspace-balance), [submission retrieval](https://docs.prolific.com/api-reference/submissions/get-submission), and [completion-code behavior](https://docs.prolific.com/api-reference/studies/the-study-object).
-- [Next.js `after()`](https://nextjs.org/docs/app/api-reference/functions/after) and [Vercel cron jobs](https://vercel.com/docs/cron-jobs).
+- [Next.js `after()`](https://nextjs.org/docs/app/api-reference/functions/after), [GitHub Actions scheduled workflows](https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#schedule), and [GitHub Actions secrets](https://docs.github.com/actions/security-guides/using-secrets-in-github-actions).
 
 Provider schemas/statuses are parsed with strict adapters and an explicit unknown branch. If official behavior changes, fail the affected action safely and update the adapter contract tests; never loosen the product's budget, targeting, consent, or privacy rules automatically.
 

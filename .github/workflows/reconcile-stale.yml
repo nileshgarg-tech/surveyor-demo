@@ -1,0 +1,42 @@
+name: Surveyor unattended recovery
+
+on:
+  schedule:
+    # Avoid the top of the hour, when GitHub-hosted schedules are most likely to queue.
+    - cron: "3-58/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: surveyor-unattended-recovery
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile stale Surveyor work
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      SURVEYOR_APP_URL: ${{ secrets.SURVEYOR_APP_URL }}
+      SURVEYOR_CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Check scheduler configuration
+        shell: bash
+        run: |
+          if [[ -z "$SURVEYOR_APP_URL" || -z "$SURVEYOR_CRON_SECRET" ]]; then
+            echo "SURVEYOR_APP_URL and CRON_SECRET repository secrets are required." >&2
+            exit 1
+          fi
+
+      - name: Run bounded recovery
+        shell: bash
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 15 \
+            --max-time 290 \
+            --retry 2 \
+            --retry-delay 10 \
+            --retry-connrefused \
+            --header "Authorization: Bearer $SURVEYOR_CRON_SECRET" \
+            "${SURVEYOR_APP_URL%/}/api/internal/reconcile-stale"
