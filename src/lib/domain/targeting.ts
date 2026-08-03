@@ -9,8 +9,8 @@ import {
 } from "@/lib/domain/schemas";
 
 const semanticAliases: Record<string, readonly string[]> = {
-  country: ["country", "country of residence", "residence", "location"],
-  age: ["age", "years old"],
+  country: ["country", "country of residence", "residence", "resident", "residents", "location", "living in", "live in", "united states", "usa", "u s"],
+  age: ["age", "aged", "ages", "adult", "adults", "years old"],
   gender: ["gender", "sex"],
   employment: ["employment", "employment status", "work status", "employed"],
   industry: ["industry", "work sector", "sector"],
@@ -53,10 +53,13 @@ export function shortlistCatalog(
   catalog: readonly NormalizedCatalogFilter[],
   limit = 12,
 ): NormalizedCatalogFilter[] {
+  const normalizedQuery = normalizePhrase(requestedAudience);
   const queryTerms = tokenize(requestedAudience);
   const semanticTerms = new Set(queryTerms);
-  for (const aliases of Object.values(semanticAliases)) {
-    if (aliases.some((alias) => queryTerms.some((term) => tokenize(alias).includes(term)))) {
+  const requestedDimensions = new Set<string>();
+  for (const [dimension, aliases] of Object.entries(semanticAliases)) {
+    if (aliases.some((alias) => includesPhrase(normalizedQuery, normalizePhrase(alias)))) {
+      requestedDimensions.add(dimension);
       aliases.flatMap(tokenize).forEach((term) => semanticTerms.add(term));
     }
   }
@@ -71,6 +74,17 @@ export function shortlistCatalog(
         if (title.includes(term)) score += 5;
         if (details.includes(term)) score += 2;
         if (choiceTerms.includes(term)) score += 1;
+      }
+      for (const dimension of requestedDimensions) {
+        score += preferredDimensionScore(dimension, filter);
+      }
+      if (
+        isCurrentCountryFilter(filter) &&
+        filter.choices?.some((choice) =>
+          includesPhrase(normalizedQuery, normalizePhrase(choice.label)),
+        )
+      ) {
+        score += 40;
       }
       return { filter, score };
     })
@@ -188,10 +202,53 @@ export function availabilityLabel(plan: Pick<TargetingPlan, "availability">): st
 }
 
 function tokenize(value: string): string[] {
+  return normalizePhrase(value)
+    .split(" ")
+    .filter((term) => term.length > 1);
+}
+
+function normalizePhrase(value: string): string {
   return value
     .toLocaleLowerCase()
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, " ")
-    .split(" ")
-    .filter((term) => term.length > 1);
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function includesPhrase(haystack: string, needle: string): boolean {
+  return needle.length > 0 && ` ${haystack} `.includes(` ${needle} `);
+}
+
+function preferredDimensionScore(
+  dimension: string,
+  filter: NormalizedCatalogFilter,
+): number {
+  const metadata = normalizePhrase(`${filter.id} ${filter.title} ${filter.question}`);
+  switch (dimension) {
+    case "country":
+      return isCurrentCountryFilter(filter) ? 60 : /\bcountry\b/.test(metadata) ? 8 : 0;
+    case "age":
+      return filter.id === "age" || normalizePhrase(filter.title) === "age" ? 60 : 0;
+    case "employment":
+      return /\bemployment status\b|\bwork status\b/.test(metadata) ? 45 : 0;
+    case "student":
+      return /\bstudent status\b/.test(metadata) ? 45 : 0;
+    case "language":
+      return /\bfirst language\b|\bnative language\b/.test(metadata) ? 45 : 0;
+    default:
+      return semanticAliases[dimension]?.some((alias) =>
+        includesPhrase(metadata, normalizePhrase(alias)),
+      )
+        ? 20
+        : 0;
+  }
+}
+
+function isCurrentCountryFilter(filter: NormalizedCatalogFilter): boolean {
+  const metadata = normalizePhrase(`${filter.id} ${filter.title} ${filter.question}`);
+  return (
+    includesPhrase(metadata, "current country of residence") ||
+    (includesPhrase(metadata, "country") && includesPhrase(metadata, "currently reside"))
+  );
 }

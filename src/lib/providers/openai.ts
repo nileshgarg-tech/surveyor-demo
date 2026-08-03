@@ -24,75 +24,91 @@ export async function generateWithOpenAI<T>(options: {
 }): Promise<StructuredGeneration<T>> {
   const env = requireLiveConfig(["OPENAI_API_KEY", "OPENAI_FALLBACK_MODEL"]);
   const providerOutputSchema = openAIResponseSchema(options.schema);
-  const response = await requestProviderJson({
-    provider: "openai",
-    url: OPENAI_RESPONSES_URL,
-    init: {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: env.OPENAI_FALLBACK_MODEL,
-        instructions: options.systemInstruction,
-        input: options.input,
-        store: false,
-        text: {
-          format: {
-            type: "json_schema",
-            name: options.schemaName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64),
-            strict: true,
-            schema: providerOutputSchema,
-          },
+  let input = options.input;
+  let lastValidationError: z.ZodError | undefined;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await requestProviderJson({
+      provider: "openai",
+      url: OPENAI_RESPONSES_URL,
+      init: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
         },
-      }),
-    },
-    maxRetries: getEnv().MAX_PROVIDER_RETRIES,
-    safeToRetry: true,
-    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-  });
-  const parsed = responseSchema.safeParse(response.body);
-  if (!parsed.success || parsed.data.status !== "completed") {
-    throw new ProviderError({
-      provider: "openai",
-      category: "schema_drift",
-      message: "OpenAI fallback returned an unrecognized response.",
-      dispatched: true,
+        body: JSON.stringify({
+          model: env.OPENAI_FALLBACK_MODEL,
+          instructions: options.systemInstruction,
+          input,
+          store: false,
+          text: {
+            format: {
+              type: "json_schema",
+              name: options.schemaName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64),
+              strict: true,
+              schema: providerOutputSchema,
+            },
+          },
+        }),
+      },
+      maxRetries: getEnv().MAX_PROVIDER_RETRIES,
+      safeToRetry: true,
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     });
+    const parsed = responseSchema.safeParse(response.body);
+    if (!parsed.success || parsed.data.status !== "completed") {
+      throw new ProviderError({
+        provider: "openai",
+        category: "schema_drift",
+        message: "OpenAI fallback returned an unrecognized response.",
+        dispatched: true,
+      });
+    }
+    const text = extractOpenAIText(parsed.data.output);
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch (error) {
+      throw new ProviderError({
+        provider: "openai",
+        category: "invalid_output",
+        message: "OpenAI fallback returned invalid structured output.",
+        dispatched: true,
+        cause: error,
+      });
+    }
+    const unwrapped =
+      json && typeof json === "object" && !Array.isArray(json)
+        ? (json as Record<string, unknown>).result
+        : undefined;
+    const validated = options.validator.safeParse(unwrapped);
+    if (validated.success) {
+      return {
+        data: validated.data,
+        provider: "openai",
+        model: env.OPENAI_FALLBACK_MODEL,
+      };
+    }
+
+    lastValidationError = validated.error;
+    input = `${options.input}\n\nADDITIONAL_DETERMINISTIC_VALIDATION\nThe prior schema-constrained result failed these local checks. Return a fresh, complete result that fixes every issue:\n${formatValidationIssues(validated.error)}`;
   }
-  const text = extractOpenAIText(parsed.data.output);
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch (error) {
-    throw new ProviderError({
-      provider: "openai",
-      category: "invalid_output",
-      message: "OpenAI fallback returned invalid structured output.",
-      dispatched: true,
-      cause: error,
-    });
-  }
-  const unwrapped =
-    json && typeof json === "object" && !Array.isArray(json)
-      ? (json as Record<string, unknown>).result
-      : undefined;
-  const validated = options.validator.safeParse(unwrapped);
-  if (!validated.success) {
-    throw new ProviderError({
-      provider: "openai",
-      category: "invalid_output",
-      message: "OpenAI fallback output failed local validation.",
-      dispatched: true,
-      cause: validated.error,
-    });
-  }
-  return {
-    data: validated.data,
+
+  throw new ProviderError({
     provider: "openai",
-    model: env.OPENAI_FALLBACK_MODEL,
-  };
+    category: "invalid_output",
+    message: "OpenAI fallback output failed local validation after one repair attempt.",
+    dispatched: true,
+    cause: lastValidationError,
+  });
+}
+
+function formatValidationIssues(error: z.ZodError): string {
+  return error.issues
+    .slice(0, 12)
+    .map((issue) => `- ${issue.path.length > 0 ? issue.path.join(".") : "result"}: ${issue.message}`)
+    .join("\n");
 }
 
 function openAIResponseSchema(schema: JsonSchema): JsonSchema {

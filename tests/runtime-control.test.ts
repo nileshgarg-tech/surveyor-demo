@@ -139,6 +139,20 @@ describe("explicit specification gates", () => {
     expect(app).toContain("await restorePersistedIntake()");
   });
 
+  it("keeps intake conversational, inference-first, and honest about unsupported audiences", () => {
+    const app = read("src/components/surveyor-app.tsx");
+    const ai = read("src/lib/services/ai.ts");
+    expect(app).toContain("conversation-thread");
+    expect(app).toContain("message-${message.role}");
+    expect(app).toContain("I’ll infer sensible defaults");
+    expect(app).not.toContain("One detail at a time");
+    expect(app).not.toContain("Closest supported audience</dt><dd>");
+    expect(app).toContain("This audience cannot launch yet.");
+    expect(ai).toContain("infer ordinary defaults instead of behaving like a form wizard");
+    expect(ai).toContain("Default broad groups such as students or workers to adults");
+    expect(ai).toContain("unsupportedBooleanLogic: hasUnsupportedBooleanLogic");
+  });
+
   it("keeps model availability prose out of targeting availability and provider routing", () => {
     const ai = read("src/lib/services/ai.ts");
     const providers = read("src/lib/providers/ai.ts");

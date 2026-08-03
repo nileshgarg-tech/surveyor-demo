@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { generateStructured } from "@/lib/providers/ai";
+import { generateWithOpenAI } from "@/lib/providers/openai";
 import {
   generateWithGemini,
   resetGeminiValidationForTests,
@@ -432,6 +433,37 @@ describe("fallback routing contract", () => {
       model: OPENAI_MODEL,
     });
     expect(openaiFetch).toHaveBeenCalledOnce();
+  });
+
+  it("repairs one OpenAI result that passes provider schema but fails local validation", async () => {
+    enableOpenAIFallback();
+    const openaiFetch = sequenceFetch(
+      openAIResponse({ value: 42 }),
+      openAIResponse({ value: "repaired" }),
+    );
+
+    await expect(generateWithOpenAI(generationOptions(openaiFetch))).resolves.toEqual({
+      data: { value: "repaired" },
+      provider: "openai",
+      model: OPENAI_MODEL,
+    });
+    expect(openaiFetch).toHaveBeenCalledTimes(2);
+    expect(requestBody(openaiFetch, 1).input).toContain("ADDITIONAL_DETERMINISTIC_VALIDATION");
+    expect(String(requestBody(openaiFetch, 1).input)).toContain("value");
+  });
+
+  it("bounds OpenAI local-validation repair to one additional request", async () => {
+    enableOpenAIFallback();
+    const openaiFetch = sequenceFetch(
+      openAIResponse({ value: 42 }),
+      openAIResponse({ value: 43 }),
+    );
+
+    await expect(generateWithOpenAI(generationOptions(openaiFetch))).rejects.toMatchObject({
+      category: "invalid_output",
+      message: "OpenAI fallback output failed local validation after one repair attempt.",
+    });
+    expect(openaiFetch).toHaveBeenCalledTimes(2);
   });
 
   it("does not fall back based on human-readable model-availability prose", async () => {

@@ -100,11 +100,46 @@ describe("live-catalog targeting router", () => {
   it("uses semantic aliases to shortlist relevant live dimensions", () => {
     expect(shortlistCatalog("People by location", catalog).map((filter) => filter.id)).toContain("country");
     expect(shortlistCatalog("People 30 years old", catalog).map((filter) => filter.id)).toContain("age");
+    expect(
+      shortlistCatalog("Adults in the United States aged 18–65", catalog).map((filter) => filter.id),
+    ).toEqual(expect.arrayContaining(["country", "age"]));
     expect(shortlistCatalog("People who are employed", catalog).map((filter) => filter.id)).toContain(
       "employment",
     );
     expect(shortlistCatalog("Native language is English", catalog, 1)).toHaveLength(1);
     expect(shortlistCatalog("astronomy hobby", catalog)).toEqual([]);
+    const liveLikeCatalog = normalizeCatalog([
+      {
+        id: "country-of-birth",
+        title: "Country of Birth",
+        question: "What is your country of birth?",
+        category: "Geographic",
+        type: "select",
+        choices: [{ id: "1", label: "United States" }],
+      },
+      {
+        id: "current-country-of-residence",
+        title: "Current Country of Residence",
+        question: "In what country do you currently reside?",
+        category: "Demographics",
+        type: "select",
+        choices: [{ id: "1", label: "United States" }],
+      },
+      {
+        id: "age",
+        title: "Age",
+        question: "What is your date of birth?",
+        category: "Demographics",
+        type: "range",
+        min: 18,
+        max: 100,
+      },
+    ]);
+    expect(
+      shortlistCatalog("Adults in the United States aged 18–65", liveLikeCatalog, 2).map(
+        (filter) => filter.id,
+      ),
+    ).toEqual(expect.arrayContaining(["current-country-of-residence", "age"]));
   });
 
   it("accepts catalog-backed choices and inclusive ranges", () => {

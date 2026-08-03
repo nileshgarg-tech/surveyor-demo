@@ -276,7 +276,6 @@ export function SurveyorApp() {
             prompt={prompt}
             setPrompt={setPrompt}
             messages={messages}
-            messageCount={userMessageCount}
             busy={false}
             error={error}
             onSubmit={() => void sendIntake(prompt)}
@@ -311,23 +310,42 @@ function PromptPanel(props: {
   prompt: string;
   setPrompt: (value: string) => void;
   messages: ConversationMessage[];
-  messageCount: number;
   busy: boolean;
   error: string | null;
   onSubmit: () => void;
   onRestart: () => void;
 }) {
-  const latestAssistant = [...props.messages].reverse().find((message) => message.role === "assistant");
   const hasConversation = props.messages.length > 0;
   return (
-    <div className="prompt-panel">
-      <p className="eyebrow">Ask a group. Get their opinion.</p>
-      <h1>{latestAssistant?.content ?? "Whose opinion do you want, and what do you want to ask them?"}</h1>
-      <p className="lede">
-        {hasConversation
-          ? `One detail at a time · ${Math.max(0, 5 - props.messageCount)} intake turns remaining`
-          : "Describe the audience and the decision, idea, or question you want to explore."}
-      </p>
+    <div className={`prompt-panel${hasConversation ? " has-conversation" : ""}`}>
+      <div className="prompt-copy">
+        <p className="eyebrow">Research copilot</p>
+        <h1>
+          {hasConversation
+            ? "Let’s sharpen the study."
+            : "Tell me what you want to learn—and from whom."}
+        </h1>
+        <p className="lede">
+          {hasConversation
+            ? "I’ll only interrupt when a missing detail would change the audience or the questions."
+            : "Describe it naturally. I’ll infer sensible defaults, shape the questions, and check the live audience."}
+        </p>
+      </div>
+
+      {hasConversation ? (
+        <div className="conversation-thread" aria-live="polite">
+          {props.messages.map((message, index) => (
+            <article
+              className={`conversation-message message-${message.role}`}
+              key={`${message.role}-${index}`}
+            >
+              <span>{message.role === "assistant" ? "Surveyor" : "You"}</span>
+              <p>{message.content}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
       <form
         className="prompt-form"
         onSubmit={(event) => {
@@ -342,17 +360,21 @@ function PromptPanel(props: {
           onChange={(event) => props.setPrompt(event.target.value)}
           placeholder={
             hasConversation
-              ? "Add the missing detail…"
-              : "For example: Ask remote software workers what makes a meeting feel worth attending."
+              ? "Reply naturally — one sentence is enough."
+              : "For example: Ask US adults whether they prefer a four-day or five-day workweek, why, and how strongly."
           }
-          rows={4}
+          rows={hasConversation ? 3 : 4}
           maxLength={2_000}
           autoFocus
         />
         <div className="form-row">
-          <span className="form-hint">Adults only · 3 questions by default</span>
+          <span className="form-hint">
+            {hasConversation
+              ? "Answer in your own words. I’ll carry the earlier context forward."
+              : "Adults only · Usually ready from one complete message"}
+          </span>
           <button className="primary-button" type="submit" disabled={props.busy || props.prompt.trim().length < 2}>
-            {hasConversation ? "Continue" : "Design survey"}
+            {hasConversation ? "Send reply" : "Shape the study"}
             <span aria-hidden="true">→</span>
           </button>
         </div>
@@ -360,7 +382,7 @@ function PromptPanel(props: {
       {props.error ? (
         <div className="error-banner" role="alert">
           <span>{props.error}</span>
-          {props.messageCount >= 5 ? <button onClick={props.onRestart}>Start over</button> : null}
+          <button onClick={props.onRestart}>Start fresh</button>
         </div>
       ) : null}
     </div>
@@ -413,6 +435,11 @@ function PreviewPanel(props: {
 }) {
   const { preview } = props;
   const smallAudience = preview.targeting.availability.privacyCensoredBelow25;
+  const launchLabel = props.launching
+    ? "Starting survey…"
+    : preview.targeting.status === "unsupported"
+      ? "Adjust audience first"
+      : "Run survey";
   return (
     <div className="preview-panel">
       <div className="preview-heading">
@@ -428,25 +455,49 @@ function PreviewPanel(props: {
       <div className="preview-grid">
         <section className="preview-main">
           <div className="audience-card">
-            <span className="section-label">Audience</span>
+            <div className="audience-card-header">
+              <span className="section-label">Audience check</span>
+              {preview.targeting.status !== "unsupported" ? (
+                <span className="availability-note">
+                  {smallAudience
+                    ? "Small audience"
+                    : `${preview.targeting.availability.reportedCount.toLocaleString()} available now`}
+                </span>
+              ) : null}
+            </div>
             <dl>
-              <div><dt>You requested</dt><dd>{preview.targeting.requestedAudience}</dd></div>
-              <div><dt>{preview.targeting.status === "exact" ? "Recruiting" : "Closest supported audience"}</dt><dd>{preview.targeting.recruitedAudience}</dd></div>
+              <div><dt>You asked for</dt><dd>{preview.targeting.requestedAudience}</dd></div>
+              {preview.targeting.status !== "unsupported" ? (
+                <div>
+                  <dt>{preview.targeting.status === "exact" ? "Prolific match" : "Closest supported match"}</dt>
+                  <dd>{preview.targeting.recruitedAudience}</dd>
+                </div>
+              ) : null}
             </dl>
-            {smallAudience ? <p className="warning-note">Small audience; timing is uncertain</p> : null}
+            {smallAudience && preview.targeting.status !== "unsupported" ? (
+              <p className="warning-note">Fewer than 25 participants may currently qualify, so timing is uncertain.</p>
+            ) : null}
             {preview.targeting.proxies.map((proxy) => (
               <p className="limitation" key={`${proxy.requested}-${proxy.limitation}`}>{proxy.limitation}</p>
             ))}
-            {preview.targeting.unsupportedCriteria.length > 0 ? (
+            {preview.targeting.status === "unsupported" ? (
               <div className="unsupported-actions">
-                <p className="warning-note">Unsupported: {preview.targeting.unsupportedCriteria.join(", ")}. Broaden the audience and restart.</p>
-                <button className="secondary-button" onClick={props.onRestart}>Broaden audience and restart</button>
+                <strong>This audience cannot launch yet.</strong>
+                <p>Prolific could not represent:</p>
+                <ul>
+                  {preview.targeting.unsupportedCriteria.map((criterion) => (
+                    <li key={criterion}>{criterion}</li>
+                  ))}
+                </ul>
+                <button className="secondary-button" onClick={props.onRestart}>Adjust the audience</button>
               </div>
             ) : null}
             {preview.targeting.status === "proxy" && !preview.proxyAccepted ? (
-              <button className="secondary-button" onClick={props.onAcceptProxy}>Accept closest supported audience</button>
+              <button className="secondary-button" onClick={props.onAcceptProxy}>Use this closest match</button>
             ) : null}
-            {preview.targeting.status === "proxy" && preview.proxyAccepted ? <p className="accepted-note">✓ Closest audience accepted</p> : null}
+            {preview.targeting.status === "proxy" && preview.proxyAccepted ? (
+              <p className="accepted-note">✓ Closest audience accepted</p>
+            ) : null}
           </div>
 
           <div className="question-list">
@@ -461,12 +512,18 @@ function PreviewPanel(props: {
         </section>
 
         <aside className="run-card">
-          <span className="section-label">Run setup</span>
-          <fieldset disabled={props.updatingCount}>
-            <legend>Participants</legend>
-            <div className="segmented-control">
+          <div className="run-card-header">
+            <span className="section-label">Run setup</span>
+            <strong>{preview.participantCount} participants</strong>
+          </div>
+          <fieldset disabled={props.updatingCount || preview.targeting.status === "unsupported"}>
+            <legend>Choose sample size</legend>
+            <div className="participant-options">
               {preview.participantCostOptions.map((option) => (
-                <label key={option.participants} className={!option.enabled ? "disabled" : ""}>
+                <label
+                  key={option.participants}
+                  className={`${preview.participantCount === option.participants ? "selected" : ""}${!option.enabled ? " disabled" : ""}`}
+                >
                   <input
                     type="radio"
                     name="participants"
@@ -475,34 +532,34 @@ function PreviewPanel(props: {
                     disabled={!option.enabled}
                     onChange={() => props.onCount(option.participants)}
                   />
-                  <span>{option.participants}</span>
+                  <span className="participant-option-main">
+                    <strong>{option.participants}</strong>
+                    <small>people</small>
+                  </span>
+                  <span className="participant-option-price">
+                    {option.totalCents === null ? "Unavailable" : formatUsd(option.totalCents)}
+                  </span>
                 </label>
               ))}
             </div>
           </fieldset>
-          <ul className="option-costs" aria-label="Provider-confirmed participant costs">
-            {preview.participantCostOptions.map((option) => (
-              <li key={option.participants} className={!option.enabled ? "disabled" : ""}>
-                <span>{option.participants} people</span>
-                <small>
-                  {option.totalCents === null ? "Unavailable" : formatUsd(option.totalCents)}
-                  {option.error ? ` · ${option.error}` : ""}
-                </small>
-              </li>
-            ))}
-          </ul>
           <div className="metric-list">
-            <div><span>Time</span><strong>{preview.estimatedMinutes} min</strong></div>
-            <div><span>Reward</span><strong>{formatUsd(preview.rewardCents)} each</strong></div>
-            <div className="total"><span>Provider-confirmed total</span><strong>{preview.authoritativeTotalCents === null ? "Unavailable" : formatUsd(preview.authoritativeTotalCents)}</strong></div>
+            <div><span>Survey length</span><strong>{preview.estimatedMinutes} min</strong></div>
+            <div><span>Pay per participant</span><strong>{formatUsd(preview.rewardCents)}</strong></div>
+            <div className="total">
+              <span>Confirmed total</span>
+              <strong>{preview.authoritativeTotalCents === null ? "Unavailable" : formatUsd(preview.authoritativeTotalCents)}</strong>
+            </div>
           </div>
           <button className="primary-button run-button" onClick={props.onLaunch} disabled={props.launchDisabled}>
-            {props.launching ? "Starting survey…" : "Run survey"}
+            {launchLabel}
           </button>
           <p className="cost-note">
-            {props.eventAccess === "granted"
-              ? "Paid action starts immediately after server checks pass."
-              : "An official event link is required to publish and spend."}
+            {preview.targeting.status === "unsupported"
+              ? "Fix the audience before any paid action is possible."
+              : props.eventAccess === "granted"
+                ? "Paid action starts only after server checks pass."
+                : "An official event link is required to publish and spend."}
           </p>
           {props.error ? <p className="inline-error" role="alert">{props.error}</p> : null}
         </aside>
