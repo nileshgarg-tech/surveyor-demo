@@ -10,7 +10,11 @@ const prohibitedRules: Array<{ pattern: RegExp; reason: string }> = [
     reason: "surveys targeting minors",
   },
   {
-    pattern: /\b(?:full names?|e-?mail(?: addresses?)?s?|phone numbers?|home addresses?|social security numbers?|passport numbers?|contact details)\b/i,
+    pattern: /\b(?:full names?|e-?mail addresses?|phone numbers?|home addresses?|social security numbers?|passport numbers?|contact details)\b/i,
+    reason: "requests for direct identifiers",
+  },
+  {
+    pattern: /(?:\b(?:collect(?:ing)?|request(?:ing)?|obtain(?:ing)?|record(?:ing)?|capture|capturing|store|storing)\b[\s\S]{0,80}\be-?mails?\b|\b(?:provide|providing|submit|submitting|enter|entering|share|sharing)\s+(?:(?:us\s+)?(?:your|their|an?)\s+)?e-?mails?\b|\bask(?:ing)?\b[\s\S]{0,60}\bfor\s+(?:(?:your|their|an?)\s+)?e-?mails?\b)/i,
     reason: "requests for direct identifiers",
   },
   {

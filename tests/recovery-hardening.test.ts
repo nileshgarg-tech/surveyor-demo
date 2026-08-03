@@ -79,9 +79,14 @@ describe("fixed minimal content protection", () => {
     expect(() => enforceMinimalContentPolicy(request)).toThrow(AppError);
   });
 
-  it("does not reject a legitimate adult parent audience", () => {
+  it("allows legitimate adult audiences and communication-channel preferences", () => {
     expect(() =>
       enforceMinimalContentPolicy("Survey parents about how they choose after-school programs"),
+    ).not.toThrow();
+    expect(() =>
+      enforceMinimalContentPolicy(
+        "Ask adults aged 18–65 living in the United States which channel they prefer for important appointment reminders—text message, email, or phone call—what matters most in that choice, and how strongly they prefer it.",
+      ),
     ).not.toThrow();
   });
 });
