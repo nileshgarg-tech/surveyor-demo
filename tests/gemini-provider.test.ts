@@ -15,14 +15,15 @@ const GEMINI_KEY = "gemini-test-key";
 const OPENAI_MODEL = "gpt-test-fallback";
 
 const resultJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    value: { type: "string" },
-  },
-  required: ["value"],
-  additionalProperties: false,
+  oneOf: [
+    {
+      type: "object",
+      properties: { value: { type: "string" } },
+      required: ["value"],
+      additionalProperties: false,
+    },
+  ],
 };
-
 const resultValidator = z.object({ value: z.string() }).strict();
 
 function jsonResponse(
@@ -58,7 +59,7 @@ function openAIResponse(data: unknown): Response {
     output: [
       {
         type: "message",
-        content: [{ type: "output_text", text: JSON.stringify(data) }],
+        content: [{ type: "output_text", text: JSON.stringify({ result: data }) }],
       },
     ],
   });
@@ -393,6 +394,26 @@ describe("fallback routing contract", () => {
       model: OPENAI_MODEL,
     });
     expect(openaiFetch).toHaveBeenCalledOnce();
+    const fallbackRequest = requestBody(openaiFetch, 0);
+    const fallbackSchema = (fallbackRequest.text as { format: { schema: unknown } }).format.schema;
+    expect(fallbackSchema).toEqual({
+      type: "object",
+      properties: {
+        result: {
+          anyOf: [
+            {
+              type: "object",
+              properties: { value: { type: "string" } },
+              required: ["value"],
+              additionalProperties: false,
+            },
+          ],
+        },
+      },
+      required: ["result"],
+      additionalProperties: false,
+    });
+    expect(JSON.stringify(fallbackSchema)).not.toContain("oneOf");
   });
 
   it("falls back for a locally typed invalid-output failure", async () => {

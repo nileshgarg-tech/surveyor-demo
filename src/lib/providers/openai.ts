@@ -23,6 +23,7 @@ export async function generateWithOpenAI<T>(options: {
   fetchImpl?: typeof fetch;
 }): Promise<StructuredGeneration<T>> {
   const env = requireLiveConfig(["OPENAI_API_KEY", "OPENAI_FALLBACK_MODEL"]);
+  const providerOutputSchema = openAIResponseSchema(options.schema);
   const response = await requestProviderJson({
     provider: "openai",
     url: OPENAI_RESPONSES_URL,
@@ -42,7 +43,7 @@ export async function generateWithOpenAI<T>(options: {
             type: "json_schema",
             name: options.schemaName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64),
             strict: true,
-            schema: options.schema,
+            schema: providerOutputSchema,
           },
         },
       }),
@@ -73,7 +74,11 @@ export async function generateWithOpenAI<T>(options: {
       cause: error,
     });
   }
-  const validated = options.validator.safeParse(json);
+  const unwrapped =
+    json && typeof json === "object" && !Array.isArray(json)
+      ? (json as Record<string, unknown>).result
+      : undefined;
+  const validated = options.validator.safeParse(unwrapped);
   if (!validated.success) {
     throw new ProviderError({
       provider: "openai",
@@ -88,6 +93,26 @@ export async function generateWithOpenAI<T>(options: {
     provider: "openai",
     model: env.OPENAI_FALLBACK_MODEL,
   };
+}
+
+function openAIResponseSchema(schema: JsonSchema): JsonSchema {
+  return {
+    type: "object",
+    properties: { result: normalizeOpenAISchema(schema) },
+    required: ["result"],
+    additionalProperties: false,
+  };
+}
+
+function normalizeOpenAISchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeOpenAISchema);
+  if (!value || typeof value !== "object") return value;
+  const source = value as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(source)) {
+    normalized[key === "oneOf" ? "anyOf" : key] = normalizeOpenAISchema(item);
+  }
+  return normalized;
 }
 
 function extractOpenAIText(output: unknown[]): string {
