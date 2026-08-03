@@ -4,6 +4,7 @@ import { intakeStateSchema, type IntakeMessage, type IntakeModelResult } from "@
 import { errorResponse, jsonNoStore } from "@/lib/http";
 import { guardBrowserMutation } from "@/lib/route-guard";
 import {
+  clearIntakeCookie,
   INTAKE_COOKIE,
   readEventAuthority,
   setIntakeCookie,
@@ -51,9 +52,7 @@ export async function POST(request: import("next/server").NextRequest) {
     const body = bodySchema.parse(await parseJsonBody(request));
     if ("action" in body && body.action === "restart") {
       const response = jsonNoStore({ restarted: true });
-      response.cookies.set(INTAKE_COOKIE, "", {
-        httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0,
-      });
+      clearIntakeCookie(response);
       return response;
     }
     if ("action" in body) {

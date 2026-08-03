@@ -149,6 +149,16 @@ export function setIntakeCookie(response: NextResponse, intakeId: string, expire
   });
 }
 
+export function clearIntakeCookie(response: NextResponse): void {
+  response.cookies.set(INTAKE_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 export function requireIntakeId(request: NextRequest): string {
   const token = request.cookies.get(INTAKE_COOKIE)?.value;
   if (!token) throw invalidIntake();

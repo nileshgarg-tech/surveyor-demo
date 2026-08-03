@@ -3,7 +3,7 @@ import { AppError } from "@/lib/errors";
 import { requireSecret } from "@/lib/env";
 import { errorResponse, jsonNoStore } from "@/lib/http";
 import { guardBrowserMutation } from "@/lib/route-guard";
-import { createEventAuthority, setEventCookie } from "@/lib/security/auth";
+import { clearIntakeCookie, createEventAuthority, setEventCookie } from "@/lib/security/auth";
 import { timingSafeTokenEqual } from "@/lib/security/crypto";
 import { parseJsonBody } from "@/lib/security/request";
 
@@ -19,6 +19,7 @@ export async function POST(request: import("next/server").NextRequest) {
     const { authority, token } = await createEventAuthority();
     const response = jsonNoStore({ authorized: true, expiresAt: authority.expiresAt });
     setEventCookie(response, token, authority.expiresAt);
+    clearIntakeCookie(response);
     return response;
   } catch (error) {
     return errorResponse(error);

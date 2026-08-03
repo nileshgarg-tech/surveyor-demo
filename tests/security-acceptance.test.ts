@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/errors";
-import { setEventCookie } from "@/lib/security/auth";
+import { clearIntakeCookie, setEventCookie } from "@/lib/security/auth";
 import {
   deriveKey,
   keyedFingerprint,
@@ -106,10 +106,11 @@ describe("signed session and HMAC security boundary", () => {
     expect(timingSafeTokenEqual("", "official-token")).toBe(false);
   });
 
-  it("sets the event authority cookie with the required browser protections", () => {
+  it("sets the event authority cookie securely and can clear stale intake state", () => {
     const response = NextResponse.json({ ok: true });
     const expiresAt = "2026-08-04T12:00:00.000Z";
     setEventCookie(response, "signed-value", expiresAt);
+    clearIntakeCookie(response);
 
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("surveyor_event=signed-value");
@@ -118,6 +119,8 @@ describe("signed session and HMAC security boundary", () => {
     expect(cookie.toLowerCase()).toContain("samesite=lax");
     expect(cookie).toContain("Path=/");
     expect(cookie).toContain("Priority=high");
+    expect(cookie).toContain("surveyor_intake=");
+    expect(cookie).toContain("Max-Age=0");
   });
 
   it("requires a sufficiently strong root signing secret", () => {

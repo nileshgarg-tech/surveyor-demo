@@ -124,14 +124,19 @@ describe("explicit specification gates", () => {
     ).toBe(false);
   });
 
-  it("requires study-linked event authority before the launch service can run", () => {
+  it("requires study-linked event authority and starts each event link with a fresh intake", () => {
     const route = read("src/app/api/studies/[id]/launch/route.ts");
+    const eventRoute = read("src/app/api/event/session/route.ts");
+    const app = read("src/components/surveyor-app.tsx");
     const auth = read("src/lib/security/auth.ts");
     expect(route.indexOf("requireResearcherStudy(request, id)")).toBeLessThan(
       route.indexOf("launchStudy({"),
     );
     expect(auth).toContain("An official Surveyor event link is required to run a paid survey.");
     expect(auth).toContain('.eq("event_session_id", authority.sessionId)');
+    expect(eventRoute).toContain("clearIntakeCookie(response)");
+    expect(app.match(/void activateEventLink\(\)/g)).toHaveLength(1);
+    expect(app).toContain("await restorePersistedIntake()");
   });
 
   it("keeps model availability prose out of targeting availability and provider routing", () => {
