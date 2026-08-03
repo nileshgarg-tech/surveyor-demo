@@ -36,9 +36,9 @@ function jsonResponse(
   });
 }
 
-function geminiResponse(data: unknown, id = "int_test"): Response {
+function geminiResponse(data: unknown, id: string | null = "int_test"): Response {
   return jsonResponse({
-    id,
+    ...(id ? { id } : {}),
     status: "completed",
     object: "interaction",
     model: GEMINI_MODEL,
@@ -129,7 +129,7 @@ afterEach(() => {
 describe("Gemini Interactions contract", () => {
   it("uses the exact stable v1 request, configured model, and structured output shape", async () => {
     const fetchMock = sequenceFetch(
-      geminiResponse({ ok: true }, "int_readiness"),
+      geminiResponse({ ok: true }, null),
       geminiResponse({ value: "parsed" }, "int_generation"),
     );
 

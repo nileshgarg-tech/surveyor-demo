@@ -11,7 +11,7 @@ const geminiErrorSchema = z
 
 const geminiResponseSchema = z
   .object({
-    id: z.string().min(1),
+    id: z.string().min(1).optional(),
     status: z.string(),
     model: z.string(),
     steps: z.array(z.unknown()),
@@ -155,7 +155,7 @@ async function callGemini<T>(
   }
   return {
     data: validated.data,
-    interactionId: parsedResponse.data.id,
+    ...(parsedResponse.data.id ? { interactionId: parsedResponse.data.id } : {}),
     provider: "gemini",
     model: env.GEMINI_MODEL,
   };
