@@ -129,6 +129,9 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
           </div>
           <div className="collection-copy" aria-live="polite">
             <p className="eyebrow">{stage.eyebrow}</p>
+            <h2 style={{ fontSize: "22px", fontFamily: "Georgia, serif", fontWeight: 500, margin: "6px 0 12px 0", color: "var(--ink)" }}>
+              {study.brief.title}
+            </h2>
             <h1>{stage.title}</h1>
             <p className="lede">{stage.description}</p>
             <div className="study-facts">
