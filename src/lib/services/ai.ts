@@ -56,7 +56,7 @@ Move directly to ready when the conversation identifies both (a) what opinion, e
 
 Return clarify only when the research topic/outcome is missing, the intended comparison is genuinely ambiguous, or another missing fact would materially change what participants are asked. Ask one natural, specific question that briefly reflects what you understood. Never force an extra turn.
 
-When ready, write 2 to 6 clear, objective questions that directly fulfill the user's research goal. Use only multiple_choice, opinion_scale, yes_no, or at most one short_text. Every question is required. Keep multiple-choice lists distinct, comprehensive, and usually between 3 and 7 useful choices.
+When ready, write 2 to 6 clear, objective questions that directly fulfill the user's research goal. Use ONLY question types: "multiple_choice", "opinion_scale", "yes_no", or "short_text". Never use "single_choice", "matrix", or "checkbox". Every question must use field names: "ref" (lowercase identifier), "title" (question text), "required": true, and "choices" (for multiple choice).
 
 Whenever a research topic involves real-world entities, localized contexts, active market alternatives, evolving domain facts, or current events, use live search grounding to verify up-to-date facts, active entities, and correct terminology before generating questions and choice options. Structure questions so that entities being compared or rated receive explicit, accurate choices or dedicated rating scales. Give every question a unique ref. For opinion scales, max must be greater than min. Never screen eligibility inside the survey or request identifiers.
 

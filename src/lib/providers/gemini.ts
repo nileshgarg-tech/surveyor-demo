@@ -85,7 +85,7 @@ async function callGemini<T>(
     input: options.input,
     store: options.store ?? true,
     system_instruction: options.systemInstruction,
-    ...(options.enableGrounding ? { tools: [{ google_search: {} }] } : {}),
+    ...(options.enableGrounding ? { tools: [{ type: "google_search" }] } : {}),
     response_format: {
       type: "text",
       mime_type: "application/json",
@@ -134,6 +134,9 @@ async function callGemini<T>(
   let json: unknown;
   try {
     json = JSON.parse(text);
+    if (options.schemaName === "surveyor_intake") {
+      json = sanitizeIntakeJson(json);
+    }
   } catch (error) {
     throw new ProviderError({
       provider: "gemini",
@@ -187,4 +190,65 @@ function extractGeminiText(steps: unknown[]): string {
 export function resetGeminiValidationForTests() {
   validationPromise = undefined;
   validatedModel = undefined;
+}
+
+function sanitizeIntakeJson(json: unknown): unknown {
+  if (!json || typeof json !== "object") return json;
+  const obj = { ...(json as Record<string, unknown>) };
+  if (obj.kind === "ready" && obj.survey && typeof obj.survey === "object") {
+    const survey = { ...(obj.survey as Record<string, unknown>) };
+    if (Array.isArray(survey.questions)) {
+      const sanitizedQuestions: Record<string, unknown>[] = [];
+      for (const q of survey.questions) {
+        if (!q || typeof q !== "object") continue;
+        const item = { ...(q as Record<string, unknown>) };
+
+        // Normalize ref / id
+        if (!item.ref && typeof item.id === "string") {
+          item.ref = item.id;
+        }
+        let refStr = typeof item.ref === "string" ? item.ref.replace(/[^a-z0-9_]/gi, "_").toLowerCase() : "";
+        if (!refStr || !/^[a-z]/.test(refStr)) {
+          refStr = `q_${refStr || (sanitizedQuestions.length + 1)}`;
+        }
+        item.ref = refStr.slice(0, 32);
+
+        // Normalize title / text
+        if (!item.title && typeof item.text === "string") item.title = item.text;
+
+        // Normalize choices / options
+        if (!item.choices && Array.isArray(item.options)) {
+          item.choices = (item.options as unknown[]).map(String);
+        }
+        item.required = true;
+
+        // Normalize question types
+        if (item.type === "single_choice" || item.type === "select" || item.type === "radio") {
+          item.type = "multiple_choice";
+        }
+
+        // Convert matrix questions into individual multiple_choice questions
+        if (item.type === "matrix" && Array.isArray(item.rows) && Array.isArray(item.columns)) {
+          const rows = (item.rows as unknown[]).map(String);
+          const cols = (item.columns as unknown[]).map(String);
+          const baseRef = typeof item.ref === "string" ? item.ref : "q_matrix";
+          rows.slice(0, 4).forEach((rowTitle, idx) => {
+            sanitizedQuestions.push({
+              ref: `${baseRef}_${idx + 1}`.slice(0, 32),
+              title: `${typeof item.title === "string" ? item.title : "Opinion"}: ${rowTitle}`,
+              type: "multiple_choice",
+              required: true,
+              choices: cols.slice(0, 7),
+            });
+          });
+          continue;
+        }
+
+        sanitizedQuestions.push(item);
+      }
+      survey.questions = sanitizedQuestions.slice(0, 6);
+    }
+    obj.survey = survey;
+  }
+  return obj;
 }
