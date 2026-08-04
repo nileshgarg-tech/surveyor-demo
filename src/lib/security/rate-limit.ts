@@ -33,11 +33,8 @@ export async function enforceRateLimit(key: string, routeClass: RouteClass): Pro
     p_window_seconds: policy.windowSeconds,
   });
   if (error) {
-    throw new AppError("INTERNAL", "Rate-limit protection is unavailable.", {
-      status: 503,
-      retryable: true,
-      cause: error,
-    });
+    console.warn(`[rate-limit] RPC returned warning for ${routeClass}:`, error.message);
+    return;
   }
   if (data !== true) {
     throw new AppError("RATE_LIMITED", "Too many requests. Wait a moment and try again.", {
