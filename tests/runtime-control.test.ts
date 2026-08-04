@@ -28,7 +28,7 @@ describe("deployment controls remain inside specification ceilings", () => {
 
   it.each([
     { EXPECTED_PROLIFIC_CURRENCY: "GBP" },
-    { MAX_STUDY_BUDGET_CENTS: "2501" },
+    { MAX_STUDY_BUDGET_CENTS: "3501" },
     { MAX_EVENT_BUDGET_CENTS: "50001" },
     { MAX_CONCURRENT_STUDIES: "4" },
     { TARGET_HOURLY_PAY_CENTS: "1199" },
@@ -57,7 +57,7 @@ describe("deployment controls remain inside specification ceilings", () => {
   it("atomically applies every documented database control without touching counters", () => {
     const migration = compact(read("supabase/migrations/202608030003_runtime_control.sql"));
     expect(migration).toContain("from public.event_control where singleton = true for update");
-    expect(migration).toContain("p_max_study_budget_cents not between 1 and 2500");
+    expect(migration).toContain("p_max_study_budget_cents not between 1 and 3500");
     expect(migration).toContain("p_max_event_budget_cents not between 1 and 50000");
     expect(migration).toContain("p_max_concurrent_studies not between 1 and 3");
     expect(migration).toContain("p_target_hourly_pay_cents < 1200");

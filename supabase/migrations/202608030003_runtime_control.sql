@@ -26,7 +26,7 @@ begin
   for update;
   if not found then raise exception 'EVENT_CONTROL_MISSING'; end if;
 
-  if p_max_study_budget_cents not between 1 and 2500
+  if p_max_study_budget_cents not between 1 and 3500
     or p_max_event_budget_cents not between 1 and 50000
     or p_max_study_budget_cents > p_max_event_budget_cents then
     raise exception 'BUDGET_CONTROL_INVALID';
