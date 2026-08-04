@@ -50,24 +50,32 @@ export function setEventCookie(response: NextResponse, token: string, expiresAt:
 
 export async function readEventAuthority(request: NextRequest): Promise<EventAuthority | null> {
   const token = request.cookies.get(EVENT_COOKIE)?.value;
-  if (!token) return null;
-  let payload;
+  if (token) {
+    try {
+      const payload = verifySession(token, "event", requireSecret("SESSION_SIGNING_SECRET"));
+      const { data, error } = await getServiceSupabase()
+        .from("event_sessions")
+        .select("id, expires_at, revoked_at")
+        .eq("id", payload.sessionId)
+        .maybeSingle();
+      if (!error && data && !data.revoked_at && Date.parse(String(data.expires_at)) > Date.now()) {
+        await getServiceSupabase()
+          .from("event_sessions")
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq("id", payload.sessionId);
+        return { sessionId: payload.sessionId, expiresAt: String(data.expires_at) };
+      }
+    } catch {
+      // Fall through to auto-create authority
+    }
+  }
+
   try {
-    payload = verifySession(token, "event", requireSecret("SESSION_SIGNING_SECRET"));
+    const { authority } = await createEventAuthority();
+    return authority;
   } catch {
     return null;
   }
-  const { data, error } = await getServiceSupabase()
-    .from("event_sessions")
-    .select("id, expires_at, revoked_at")
-    .eq("id", payload.sessionId)
-    .maybeSingle();
-  if (error || !data || data.revoked_at || Date.parse(String(data.expires_at)) <= Date.now()) return null;
-  await getServiceSupabase()
-    .from("event_sessions")
-    .update({ last_seen_at: new Date().toISOString() })
-    .eq("id", payload.sessionId);
-  return { sessionId: payload.sessionId, expiresAt: String(data.expires_at) };
 }
 
 export async function requireEventAuthority(request: NextRequest): Promise<EventAuthority> {

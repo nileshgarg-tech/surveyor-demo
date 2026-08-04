@@ -19,6 +19,7 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [launching, setLaunching] = useState(false);
   const recoveryRequested = useRef(false);
   const reportRequested = useRef(false);
 
@@ -80,6 +81,19 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
     }
   }
 
+  async function launchCurrentStudy() {
+    setLaunching(true);
+    setError(null);
+    try {
+      await mutate(`/api/studies/${study.id}/launch`);
+      await refresh();
+    } catch (launchErr) {
+      setError(launchErr instanceof Error ? launchErr.message : "Study launch failed.");
+    } finally {
+      setLaunching(false);
+    }
+  }
+
   async function deleteCurrentStudy() {
     setDeleting(true);
     setError(null);
@@ -138,6 +152,16 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
               <span>{study.targeting.recruitedAudience}</span><span>{study.estimatedMinutes} minutes</span><span>{study.survey.questions.length} questions</span>
             </div>
             <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "24px" }}>
+              {!study.launchConfirmedAt ? (
+                <button
+                  className="primary-button"
+                  style={{ marginTop: 0 }}
+                  disabled={launching}
+                  onClick={() => void launchCurrentStudy()}
+                >
+                  {launching ? "Launching on Prolific…" : "Launch Survey Now →"}
+                </button>
+              ) : null}
               {canFinish ? <button className="secondary-button" style={{ marginTop: 0 }} onClick={() => void finish()}>Finish with current responses</button> : null}
               {study.status === "blocked" ? <button className="secondary-button" style={{ marginTop: 0 }} onClick={() => void retryReport()}>Retry report</button> : null}
               {confirmDelete ? (
@@ -282,6 +306,9 @@ function ReportView({
 }
 
 function collectionStage(study: PublicStudy) {
+  if (!study.launchConfirmedAt) {
+    return { key: "finding", passed: [], eyebrow: "Study Pending Launch", title: "Survey ready to publish", description: "Click Launch Survey Now below to publish on Prolific and begin participant collection." };
+  }
   if (study.status === "ready_to_report" || study.status === "reporting" || study.status === "blocked") {
     return { key: "report", passed: ["finding", "responses"], eyebrow: "Preparing report", title: "Turning responses into a clear readout", description: "Counts are calculated in code; AI only helps explain the observed patterns." };
   }

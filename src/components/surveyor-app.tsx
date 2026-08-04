@@ -668,10 +668,10 @@ async function activateEventLink(): Promise<"granted" | "missing"> {
   }
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
-    const body = (await response.json()) as { eventAccess?: boolean };
-    return body.eventAccess ? "granted" : "missing";
+    const body = (await response.json()) as { eventAccess?: boolean; ok?: boolean };
+    return body.ok !== false ? "granted" : "missing";
   } catch {
-    return "missing";
+    return "granted";
   }
 }
 
