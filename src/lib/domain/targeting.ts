@@ -37,7 +37,7 @@ export function buildCatalogIndex(catalog: readonly NormalizedCatalogFilter[]) {
 export function shortlistCatalog(
   requestedAudience: string,
   catalog: readonly NormalizedCatalogFilter[],
-  limit = 20,
+  limit = 30,
 ): NormalizedCatalogFilter[] {
   if (catalog.length <= limit) return [...catalog];
 
