@@ -91,7 +91,7 @@ export function SurveyorApp() {
       setUserMessageCount(payload.state.userMessageCount);
       if (payload.study) {
         setPreview(payload.study);
-        setPhase("preview");
+        setPhase("prompt");
         return;
       }
       if (payload.state.status === "ready" || payload.state.status === "consumed") {
@@ -101,7 +101,7 @@ export function SurveyorApp() {
           requestId: crypto.randomUUID(),
         });
         setPreview(designed.study);
-        setPhase("preview");
+        setPhase("prompt");
         return;
       }
       if (payload.state.status === "insufficient") {
@@ -156,6 +156,13 @@ export function SurveyorApp() {
       if (!trimmed || phase === "intake" || userMessageCount >= 5) return;
       setError(null);
       setPhase("intake");
+      if (preview) {
+        await api("/api/intake/respond", {
+          action: "restart",
+          requestId: crypto.randomUUID(),
+        }).catch(() => {});
+        setPreview(null);
+      }
       setMessages((current) => [...current, { role: "user", content: trimmed }]);
       setPrompt("");
       try {
@@ -194,7 +201,7 @@ export function SurveyorApp() {
         setPhase("error");
       }
     },
-    [phase, userMessageCount],
+    [phase, preview, userMessageCount],
   );
 
   async function changeParticipantCount(participants: 5 | 10 | 20) {
@@ -298,14 +305,16 @@ export function SurveyorApp() {
       </header>
 
       <section className={`workspace phase-${phase}`}>
-        {!preview && (phase === "prompt" || phase === "error") ? (
+        {phase === "prompt" || phase === "error" ? (
           <PromptPanel
             prompt={prompt}
             setPrompt={setPrompt}
             messages={messages}
             busy={false}
             error={error}
+            preview={preview}
             onSubmit={() => void sendIntake(prompt)}
+            onResumeDraft={() => setPhase("preview")}
             onRestart={restart}
           />
         ) : null}
@@ -339,12 +348,57 @@ function PromptPanel(props: {
   messages: ConversationMessage[];
   busy: boolean;
   error: string | null;
+  preview?: Preview | null;
   onSubmit: () => void;
+  onResumeDraft?: () => void;
   onRestart: () => void;
 }) {
   const hasConversation = props.messages.length > 0;
   return (
     <div className={`prompt-panel${hasConversation ? " has-conversation" : ""}`}>
+      {props.preview ? (
+        <div
+          style={{
+            marginBottom: "28px",
+            padding: "16px 20px",
+            borderRadius: "16px",
+            background: "var(--amber-pale)",
+            border: "1px solid #efd7b3",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+          }}
+        >
+          <div>
+            <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--amber)", textTransform: "uppercase", letterSpacing: ".1em" }}>
+              Draft study ready
+            </span>
+            <h3 style={{ margin: "4px 0 0", fontFamily: "Georgia, serif", fontSize: "18px", fontWeight: 500 }}>
+              {props.preview.brief.title}
+            </h3>
+          </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              className="primary-button"
+              type="button"
+              style={{ padding: "9px 16px", fontSize: "13px" }}
+              onClick={props.onResumeDraft}
+            >
+              Resume draft →
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              style={{ padding: "9px 14px", fontSize: "13px" }}
+              onClick={props.onRestart}
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="prompt-copy">
         <p className="eyebrow">Opinion mapper</p>
         <h1>
