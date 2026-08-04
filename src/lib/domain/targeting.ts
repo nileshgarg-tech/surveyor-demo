@@ -10,12 +10,12 @@ import {
 
 const semanticAliases: Record<string, readonly string[]> = {
   country: ["country", "country of residence", "residence", "resident", "residents", "location", "living in", "live in", "united states", "usa", "u s"],
-  age: ["age", "aged", "ages", "adult", "adults", "years old"],
-  gender: ["gender", "sex"],
-  employment: ["employment", "employment status", "work status", "employed"],
+  age: ["age", "aged", "ages", "adult", "adults", "years old", "gen z", "gen-z", "genz", "millennial", "millennials", "boomer", "boomers", "gen x", "teen", "teens", "young adult", "young adults", "senior", "seniors"],
+  gender: ["gender", "sex", "female", "female sex", "female gender", "women", "woman", "male", "male sex", "male gender", "men", "man", "girl", "boy"],
+  employment: ["employment", "employment status", "work status", "employed", "full time", "part time", "full-time", "part-time"],
   industry: ["industry", "work sector", "sector"],
-  student: ["student", "student status", "studying"],
-  education: ["education", "highest level", "qualification"],
+  student: ["student", "student status", "studying", "college", "university", "undergraduate", "postgraduate", "higher education", "enrolled", "school"],
+  education: ["education", "highest level", "qualification", "degree", "diploma", "bachelor", "master", "doctorate"],
   language: ["language", "fluent", "fluency", "native language"],
   politics: ["political", "politics", "party", "affiliation"],
   parenthood: ["parent", "children", "parenthood"],
@@ -179,9 +179,9 @@ export function finalizeTargetingPlan(
 }
 
 export function hasUnsupportedBooleanLogic(request: string): boolean {
-  const normalized = request.toLocaleLowerCase();
+  const normalized = normalizePhrase(request);
   const dimensions = Object.entries(semanticAliases)
-    .filter(([, aliases]) => aliases.some((alias) => normalized.includes(alias)))
+    .filter(([, aliases]) => aliases.some((alias) => includesPhrase(normalized, normalizePhrase(alias))))
     .map(([dimension]) => dimension);
   if (dimensions.length < 2 || !/\b(?:or|either)\b/.test(normalized)) return false;
 
@@ -189,7 +189,7 @@ export function hasUnsupportedBooleanLogic(request: string): boolean {
   const clauses = normalized.split(/\b(?:or|either)\b/);
   const clauseDimensions = clauses.map((clause) =>
     Object.entries(semanticAliases)
-      .filter(([, aliases]) => aliases.some((alias) => clause.includes(alias)))
+      .filter(([, aliases]) => aliases.some((alias) => includesPhrase(clause, normalizePhrase(alias))))
       .map(([dimension]) => dimension),
   );
   return new Set(clauseDimensions.flat()).size > 1;
@@ -230,10 +230,14 @@ function preferredDimensionScore(
       return isCurrentCountryFilter(filter) ? 60 : /\bcountry\b/.test(metadata) ? 8 : 0;
     case "age":
       return filter.id === "age" || normalizePhrase(filter.title) === "age" ? 60 : 0;
+    case "gender":
+      return filter.id === "sex" || filter.id === "gender" || /\bsex\b|\bgender\b/.test(metadata) ? 60 : 0;
     case "employment":
       return /\bemployment status\b|\bwork status\b/.test(metadata) ? 45 : 0;
     case "student":
-      return /\bstudent status\b/.test(metadata) ? 45 : 0;
+      return filter.id === "student" || /\bstudent status\b|\bstudent\b/.test(metadata) ? 60 : 0;
+    case "education":
+      return /\beducation\b|\bhighest level\b/.test(metadata) ? 45 : 0;
     case "language":
       return /\bfirst language\b|\bnative language\b/.test(metadata) ? 45 : 0;
     default:

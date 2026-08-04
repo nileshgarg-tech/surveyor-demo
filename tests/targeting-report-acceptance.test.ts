@@ -140,6 +140,45 @@ describe("live-catalog targeting router", () => {
         (filter) => filter.id,
       ),
     ).toEqual(expect.arrayContaining(["current-country-of-residence", "age"]));
+
+    const genderAndStudentCatalog = normalizeCatalog([
+      {
+        id: "sex",
+        title: "Sex",
+        question: "What is your sex?",
+        category: "Demographics",
+        type: "select",
+        choices: [
+          { id: "1", label: "Female" },
+          { id: "2", label: "Male" },
+        ],
+      },
+      {
+        id: "student",
+        title: "Student status",
+        question: "Are you a student?",
+        category: "Demographics",
+        type: "select",
+        choices: [
+          { id: "yes", label: "Yes" },
+          { id: "no", label: "No" },
+        ],
+      },
+      {
+        id: "age",
+        title: "Age",
+        question: "How old are you?",
+        category: "Demographics",
+        type: "range",
+        min: 18,
+        max: 100,
+      },
+    ]);
+    expect(
+      shortlistCatalog("Gen Z female college students aged 18–26", genderAndStudentCatalog, 3).map(
+        (filter) => filter.id,
+      ),
+    ).toEqual(expect.arrayContaining(["sex", "student", "age"]));
   });
 
   it("accepts catalog-backed choices and inclusive ranges", () => {
