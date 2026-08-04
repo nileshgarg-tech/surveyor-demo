@@ -116,7 +116,7 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
     setUpdatingCount(true);
     setError(null);
     try {
-      await mutate("/api/studies/from-intake", { participantCount: count });
+      await mutate(`/api/studies/${study.id}`, { participantCount: count });
       await refresh();
     } catch (countErr) {
       setError(countErr instanceof Error ? countErr.message : "Count update failed.");
