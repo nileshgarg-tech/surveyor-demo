@@ -87,7 +87,8 @@ export function getEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   if (source === process.env && cachedEnv) return cachedEnv;
   const result = envSchema.safeParse(source);
   if (!result.success) {
-    throw new AppError("SETUP_REQUIRED", "Application environment is invalid.", {
+    const issues = result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
+    throw new AppError("SETUP_REQUIRED", `Application environment is invalid: ${issues}`, {
       status: 503,
       details: { fields: result.error.issues.map((issue) => issue.path.join(".")) },
     });
