@@ -13,15 +13,15 @@ export type RouteClass =
   | "recovery";
 
 export const rateLimitPolicy: Record<RouteClass, { limit: number; windowSeconds: number }> = {
-  event: { limit: 10, windowSeconds: 60 },
-  intake: { limit: 12, windowSeconds: 60 },
-  design: { limit: 8, windowSeconds: 60 },
-  launch: { limit: 3, windowSeconds: 300 },
-  status: { limit: 30, windowSeconds: 60 },
-  submission: { limit: 8, windowSeconds: 60 },
-  finish: { limit: 3, windowSeconds: 300 },
-  report: { limit: 5, windowSeconds: 300 },
-  recovery: { limit: 6, windowSeconds: 300 },
+  event: { limit: 30, windowSeconds: 60 },
+  intake: { limit: 30, windowSeconds: 60 },
+  design: { limit: 30, windowSeconds: 60 },
+  launch: { limit: 15, windowSeconds: 60 },
+  status: { limit: 120, windowSeconds: 60 },
+  submission: { limit: 30, windowSeconds: 60 },
+  finish: { limit: 15, windowSeconds: 60 },
+  report: { limit: 15, windowSeconds: 60 },
+  recovery: { limit: 15, windowSeconds: 60 },
 };
 
 export async function enforceRateLimit(key: string, routeClass: RouteClass): Promise<void> {
