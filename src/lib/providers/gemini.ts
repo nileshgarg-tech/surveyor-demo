@@ -33,6 +33,7 @@ export type GeminiGenerateOptions<T> = {
   input: string;
   previousInteractionId?: string;
   store?: boolean;
+  enableGrounding?: boolean;
   fetchImpl?: typeof fetch;
 };
 
@@ -84,6 +85,7 @@ async function callGemini<T>(
     input: options.input,
     store: options.store ?? true,
     system_instruction: options.systemInstruction,
+    ...(options.enableGrounding ? { tools: [{ google_search: {} }] } : {}),
     response_format: {
       type: "text",
       mime_type: "application/json",

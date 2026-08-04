@@ -66,7 +66,7 @@ export const intakeOutputJsonSchema: JsonSchema = {
         title: string({ minLength: 3, maxLength: 80 }),
         intro: string({ minLength: 10, maxLength: 1_000 }),
         estimatedMinutes: { type: "integer", enum: [1, 2, 3, 4, 5] },
-        questions: { type: "array", items: surveyQuestionSchema, minItems: 3, maxItems: 5 },
+        questions: { type: "array", items: surveyQuestionSchema, minItems: 2, maxItems: 6 },
       }),
       audienceCriteria: {
         type: "array",

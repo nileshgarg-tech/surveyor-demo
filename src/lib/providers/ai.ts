@@ -13,6 +13,7 @@ export async function generateStructured<T>(options: {
   input: string;
   previousInteractionId?: string;
   store?: boolean;
+  enableGrounding?: boolean;
   geminiFetch?: typeof fetch;
   openaiFetch?: typeof fetch;
 }): Promise<StructuredGeneration<T>> {
@@ -25,6 +26,7 @@ export async function generateStructured<T>(options: {
       input: options.input,
       ...(options.previousInteractionId ? { previousInteractionId: options.previousInteractionId } : {}),
       ...(options.store !== undefined ? { store: options.store } : {}),
+      ...(options.enableGrounding !== undefined ? { enableGrounding: options.enableGrounding } : {}),
       ...(options.geminiFetch ? { fetchImpl: options.geminiFetch } : {}),
     });
   } catch (error) {

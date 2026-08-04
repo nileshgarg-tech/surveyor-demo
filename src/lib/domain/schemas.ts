@@ -92,7 +92,7 @@ export const surveySpecSchema = z
       z.literal(4),
       z.literal(5),
     ]),
-    questions: z.array(surveyQuestionSchema).min(3).max(5),
+    questions: z.array(surveyQuestionSchema).min(2).max(6),
   })
   .strict()
   .superRefine((survey, context) => {

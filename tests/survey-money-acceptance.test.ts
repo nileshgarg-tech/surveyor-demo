@@ -80,10 +80,10 @@ describe("survey structure, duration, and answer safety", () => {
     }
   });
 
-  it("enforces 3–5 required questions, unique refs, unique choices, and at most one short text", () => {
+  it("enforces 2–6 required questions, unique refs, unique choices, and at most one short text", () => {
     expect(surveySpecSchema.parse(closedSurvey)).toEqual(closedSurvey);
     expect(
-      surveySpecSchema.safeParse({ ...closedSurvey, questions: closedSurvey.questions.slice(0, 2) }).success,
+      surveySpecSchema.safeParse({ ...closedSurvey, questions: closedSurvey.questions.slice(0, 1) }).success,
     ).toBe(false);
     expect(
       surveySpecSchema.safeParse({

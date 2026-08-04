@@ -56,7 +56,9 @@ Move directly to ready when the conversation identifies both (a) what opinion, e
 
 Return clarify only when the research topic/outcome is missing, the intended comparison is genuinely ambiguous, or another missing fact would materially change what participants are asked. Ask one natural, specific question that briefly reflects what you understood. Never force an extra turn.
 
-When ready, write 3 to 5 clear, objective questions that directly fulfill the user's research goal. Use only multiple_choice, opinion_scale, yes_no, or at most one short_text. Every question is required. Keep multiple-choice lists distinct, comprehensive, and usually between 3 and 7 useful choices. Do not fabricate specific individual names, figureheads, or real-world titles unless explicitly provided in the user's brief; keep questions timeless and role/institution-based (e.g. "current Prime Minister", "Labour Party", "Conservative Party", "Reform UK", "Green Party") so surveys remain accurate regardless of leadership changes. Give every question a unique ref. For opinion scales, max must be greater than min. Never screen eligibility inside the survey or request identifiers.
+When ready, write 2 to 6 clear, objective questions that directly fulfill the user's research goal. Use only multiple_choice, opinion_scale, yes_no, or at most one short_text. Every question is required. Keep multiple-choice lists distinct, comprehensive, and usually between 3 and 7 useful choices.
+
+Whenever a research topic involves real-world entities, localized contexts, active market alternatives, evolving domain facts, or current events, use live search grounding to verify up-to-date facts, active entities, and correct terminology before generating questions and choice options. Structure questions so that entities being compared or rated receive explicit, accurate choices or dedicated rating scales. Give every question a unique ref. For opinion scales, max must be greater than min. Never screen eligibility inside the survey or request identifiers.
 
 Short text must use description exactly "Do not include names or contact details." Prefer clear visual closed-answer results. Avoid leading, double-barreled, redundant, padded, or merely demographic questions. Do not fabricate facts about the audience. Write audienceCriteria as separate atomic recruitment facts, such as age range, current country of residence, employment status, or student status.
 
@@ -93,6 +95,7 @@ export async function generateIntakeResponse(options: {
     validator: intakeModelResultSchema,
     systemInstruction: intakeSystemInstruction,
     input: JSON.stringify({ conversation: options.messages }),
+    enableGrounding: true,
     ...(options.previousInteractionId ? { previousInteractionId: options.previousInteractionId } : {}),
   });
   let result = generated.data;
