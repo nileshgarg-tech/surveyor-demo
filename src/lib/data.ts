@@ -54,6 +54,7 @@ export type PublicStudy = {
   failureMessage: string | null;
   operationStage: string;
   staleOperation: boolean;
+  canViewResponses?: boolean;
   report: PublicReport | null;
 };
 

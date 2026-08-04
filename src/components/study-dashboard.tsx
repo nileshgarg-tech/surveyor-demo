@@ -16,7 +16,7 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
   const router = useRouter();
   const [study, setStudy] = useState(initialStudy);
   const [canFinish, setCanFinish] = useState(false);
-  const [canViewResponses, setCanViewResponses] = useState(false);
+  const [canViewResponses, setCanViewResponses] = useState(Boolean(initialStudy.canViewResponses));
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
