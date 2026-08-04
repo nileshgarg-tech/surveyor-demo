@@ -6,8 +6,10 @@ import { enforceMinimalContentPolicy } from "@/lib/domain/content-policy";
 
 const root = process.cwd();
 const migration = read("supabase/migrations/202608030002_recovery_hardening.sql");
+const manualFinishMigration = read("supabase/migrations/202608040001_manual_finish_recovery.sql");
 const recovery = read("src/lib/services/recovery.ts");
 const finish = read("src/lib/services/finish.ts");
+const reporting = read("src/lib/services/reporting.ts");
 
 function read(path: string): string {
   return readFileSync(resolve(root, path), "utf8");
@@ -59,6 +61,16 @@ describe("unattended provider recovery hardening", () => {
     expect(recovery).toContain("error.httpStatus === 404");
     expect(recovery).toContain('effect: "external_deleted"');
     expect(recovery).toContain('rpc("abandon_unlaunched_study"');
+  });
+
+  it("recovers a manual finish when Prolific is already non-recruiting", () => {
+    const sql = compact(manualFinishMigration);
+    expect(sql).toContain("recover_ended_manual_finish_record");
+    expect(sql).toContain("prolific_status not in ('PAUSED', 'AWAITING REVIEW', 'COMPLETED')");
+    expect(sql).toContain("report_completion_reason = 'manual'");
+    expect(sql).toContain("insert into public.reports");
+    expect(reporting).toContain('recover_ended_manual_finish');
+    expect(reporting).toContain('recover_ended_manual_finishes');
   });
 
   it("persists request-not-sent, definitive, and ambiguous PAUSE/STOP outcomes", () => {

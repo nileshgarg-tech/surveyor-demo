@@ -32,12 +32,30 @@ export async function maybeStartReport(studyId: string): Promise<boolean> {
 
 export async function retryBlockedReport(studyId: string, eventSessionId: string): Promise<void> {
   await ensureEventControlConfigured();
+  const { data: recovered, error: recoveryError } = await getServiceSupabase().rpc(
+    "recover_ended_manual_finish",
+    { p_study_id: studyId, p_event_session_id: eventSessionId },
+  );
+  if (recoveryError) throw databaseError("Ended manual finish could not be recovered.", recoveryError);
+  if (recovered === true) {
+    await maybeStartReport(studyId);
+    return;
+  }
   const { error } = await getServiceSupabase().rpc("retry_blocked_report", {
     p_study_id: studyId,
     p_event_session_id: eventSessionId,
   });
   if (error) throw databaseError("Blocked report could not be retried.", error);
   await maybeStartReport(studyId);
+}
+
+export async function recoverEndedManualFinishes(limit = getEnv().RECOVERY_BATCH_SIZE): Promise<number> {
+  await ensureEventControlConfigured();
+  const { data, error } = await getServiceSupabase().rpc("recover_ended_manual_finishes", {
+    p_limit: limit,
+  });
+  if (error) throw databaseError("Ended manual finishes could not be recovered.", error);
+  return Number(data ?? 0);
 }
 
 export async function recoverAndRunReports(limit = getEnv().RECOVERY_BATCH_SIZE): Promise<{
