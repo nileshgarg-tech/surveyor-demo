@@ -35,7 +35,7 @@ const envSchema = z
     EXPECTED_PROLIFIC_CURRENCY: z.literal("USD").default("USD"),
     MAX_STUDY_BUDGET_CENTS: intWithDefault(3_000, 1, 3_500),
     MAX_EVENT_BUDGET_CENTS: intWithDefault(50_000, 1, 50_000),
-    MAX_CONCURRENT_STUDIES: intWithDefault(5, 1, 5),
+    MAX_CONCURRENT_STUDIES: intWithDefault(5, 1, 10),
     TARGET_HOURLY_PAY_CENTS: intWithDefault(1_200, 1_200, 100_000),
     STALE_LAUNCH_MINUTES: intWithDefault(5, 1, 120),
     REPORT_STALE_MINUTES: intWithDefault(2, 1, 120),

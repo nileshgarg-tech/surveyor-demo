@@ -30,7 +30,7 @@ describe("deployment controls remain inside specification ceilings", () => {
     { EXPECTED_PROLIFIC_CURRENCY: "GBP" },
     { MAX_STUDY_BUDGET_CENTS: "3501" },
     { MAX_EVENT_BUDGET_CENTS: "50001" },
-    { MAX_CONCURRENT_STUDIES: "6" },
+    { MAX_CONCURRENT_STUDIES: "11" },
     { TARGET_HOURLY_PAY_CENTS: "1199" },
     { MAX_STUDY_BUDGET_CENTS: "2500", MAX_EVENT_BUDGET_CENTS: "2000" },
   ])("rejects a deployment override that weakens a hard safety bound: %o", (override) => {

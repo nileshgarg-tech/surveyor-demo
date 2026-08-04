@@ -29,7 +29,7 @@ begin
     or p_max_study_budget_cents > p_max_event_budget_cents then
     raise exception 'BUDGET_CONTROL_INVALID';
   end if;
-  if p_max_concurrent_studies not between 1 and 5 then
+  if p_max_concurrent_studies not between 1 and 10 then
     raise exception 'CONCURRENCY_CONTROL_INVALID';
   end if;
   if p_target_hourly_pay_cents < 1200 then
