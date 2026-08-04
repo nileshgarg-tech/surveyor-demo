@@ -52,13 +52,13 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
   }, [study.id]);
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refresh(), 0);
+    const timer = window.setTimeout(() => void refresh(), 0);
     if (study.status === "complete" && study.report) {
-      return () => window.clearTimeout(initialRefresh);
+      return;
     }
     const interval = window.setInterval(() => void refresh(), 4_000);
     return () => {
-      window.clearTimeout(initialRefresh);
+      window.clearTimeout(timer);
       window.clearInterval(interval);
     };
   }, [refresh, study.report, study.status]);

@@ -1,7 +1,12 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppError } from "@/lib/errors";
-import { getPublicStudy } from "@/lib/data";
+import { getPublicStudy, publicStudyResponse } from "@/lib/data";
 import { StudyDashboard } from "@/components/study-dashboard";
+import { EVENT_COOKIE } from "@/lib/security/auth";
+import { verifySession } from "@/lib/security/crypto";
+import { requireSecret } from "@/lib/env";
+import { getServiceSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +18,42 @@ export default async function StudyPage({ params }: { params: Promise<{ id: stri
 
 async function loadStudy(id: string) {
   try {
-    return await getPublicStudy(id);
+    const rawStudy = await getPublicStudy(id);
+    const canView = await checkCanView(id);
+    return publicStudyResponse(rawStudy, canView);
   } catch (error) {
     if (error instanceof AppError && error.code === "NOT_FOUND") notFound();
     throw error;
+  }
+}
+
+async function checkCanView(studyId: string): Promise<boolean> {
+  try {
+    const token = (await cookies()).get(EVENT_COOKIE)?.value;
+    if (!token) return false;
+    const payload = verifySession(token, "event", requireSecret("SESSION_SIGNING_SECRET"));
+    const supabase = getServiceSupabase();
+    const [{ data: session }, { data: study }] = await Promise.all([
+      supabase.from("event_sessions").select("expires_at,revoked_at").eq("id", payload.sessionId).maybeSingle(),
+      supabase.from("studies").select("id, event_session_id").eq("id", studyId).maybeSingle(),
+    ]);
+    if (!session || session.revoked_at || Date.parse(session.expires_at) <= Date.now() || !study) {
+      return false;
+    }
+    if (study.event_session_id === payload.sessionId) return true;
+    if (study.event_session_id) {
+      const { data: oldSession } = await supabase
+        .from("event_sessions")
+        .select("expires_at, revoked_at")
+        .eq("id", study.event_session_id)
+        .maybeSingle();
+      if (!oldSession || oldSession.revoked_at || Date.parse(String(oldSession.expires_at)) <= Date.now()) {
+        await supabase.from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
   }
 }
