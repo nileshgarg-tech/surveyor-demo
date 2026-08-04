@@ -517,25 +517,201 @@ export function PreviewPanel(props: {
   onAcceptProxy: () => void;
   onRestart: () => void;
   onLaunch: () => void;
+  onUpdatePreview?: (updated: Preview | import("@/lib/data").PublicStudy) => void;
+  onDeleteDraft?: () => void;
 }) {
   const { preview } = props;
   const smallAudience = preview.targeting.availability.privacyCensoredBelow25;
+  const [showRefine, setShowRefine] = useState(false);
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const launchLabel = props.launching
     ? "Starting survey…"
     : preview.targeting.status === "unsupported"
       ? "Adjust audience first"
       : "Run survey";
+
+  async function handleRefine(promptText: string) {
+    const trimmed = promptText.trim();
+    if (!trimmed || refining) return;
+    setRefining(true);
+    setRefineError(null);
+    try {
+      const res = await fetch(`/api/studies/${preview.id}/refine`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userPrompt: trimmed, requestId: crypto.randomUUID() }),
+      });
+      const body = (await res.json()) as { study?: import("@/lib/data").PublicStudy; error?: { message?: string } };
+      if (!res.ok || !body.study) throw new Error(body.error?.message ?? "Refinement failed.");
+      setRefinePrompt("");
+      if (props.onUpdatePreview) {
+        props.onUpdatePreview(body.study);
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      setRefineError(err instanceof Error ? err.message : "Draft refinement failed.");
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  async function handleDeleteDraft() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/studies/${preview.id}`, { method: "DELETE" });
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok) throw new Error(body.error?.message ?? "Study draft could not be deleted.");
+      window.location.assign("/studies");
+    } catch (err) {
+      setRefineError(err instanceof Error ? err.message : "Draft deletion failed.");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   return (
     <div className="preview-panel">
-      <div className="preview-heading">
+      <div className="preview-heading" style={{ flexWrap: "wrap", gap: "16px" }}>
         <div>
           <p className="eyebrow">Survey ready to review</p>
           <h1>{preview.brief.title}</h1>
         </div>
-        <span className={`match-badge match-${preview.targeting.status}`}>
-          {preview.targeting.status === "exact" ? "Exact audience" : preview.targeting.status === "proxy" ? "Closest match" : "Needs broader audience"}
-        </span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <span className={`match-badge match-${preview.targeting.status}`}>
+            {preview.targeting.status === "exact" ? "Exact audience" : preview.targeting.status === "proxy" ? "Closest match" : "Needs broader audience"}
+          </span>
+          <Link
+            className="secondary-button"
+            href={`/studies/${preview.id}/preview`}
+            style={{ padding: "8px 14px", fontSize: "13px" }}
+          >
+            Preview unfilled survey
+          </Link>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setShowRefine(!showRefine)}
+            style={{ padding: "8px 14px", fontSize: "13px" }}
+          >
+            {showRefine ? "Close AI Refiner ↑" : "Refine with AI ✨"}
+          </button>
+          {confirmDelete ? (
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button
+                className="secondary-button"
+                style={{ background: "var(--red)", color: "white", borderColor: "var(--red)", padding: "8px 12px", fontSize: "13px" }}
+                disabled={deleting}
+                onClick={() => void handleDeleteDraft()}
+                type="button"
+              >
+                {deleting ? "Deleting…" : "Confirm Delete"}
+              </button>
+              <button
+                className="secondary-button"
+                style={{ padding: "8px 12px", fontSize: "13px" }}
+                disabled={deleting}
+                onClick={() => setConfirmDelete(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              className="secondary-button"
+              type="button"
+              style={{ color: "var(--red)", borderColor: "#f2cfce", padding: "8px 14px", fontSize: "13px" }}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete Draft
+            </button>
+          )}
+        </div>
       </div>
+
+      {showRefine ? (
+        <div
+          className="refine-drawer"
+          style={{
+            margin: "0 0 24px 0",
+            padding: "20px",
+            background: "#fafcfb",
+            border: "1px solid #dbe8e1",
+            borderRadius: "16px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <div>
+              <span className="eyebrow" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700, color: "var(--color-primary, #005a36)" }}>
+                AI Refinement Assistant
+              </span>
+              <h3 style={{ margin: "2px 0 0", fontSize: "16px", fontFamily: "Georgia, serif", fontWeight: 500 }}>
+                Improve survey questions or audience criteria
+              </h3>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+            {[
+              "Focus on California residents",
+              "Make question 2 more specific",
+              "Add a question about monthly budget",
+              "Shorten survey duration to 3 minutes",
+            ].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                className="secondary-button"
+                style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "20px", background: "white" }}
+                disabled={refining}
+                onClick={() => void handleRefine(chip)}
+              >
+                + {chip}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleRefine(refinePrompt);
+            }}
+            style={{ display: "flex", gap: "10px" }}
+          >
+            <input
+              type="text"
+              className="refine-input"
+              value={refinePrompt}
+              onChange={(e) => setRefinePrompt(e.target.value)}
+              placeholder="Tell AI what to adjust (e.g., 'Target software developers', 'Ask about EV adoption')..."
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "1px solid #d1dfd7",
+                fontSize: "14px",
+                fontFamily: "inherit",
+              }}
+              disabled={refining}
+            />
+            <button
+              type="submit"
+              className="primary-button"
+              style={{ marginTop: 0, padding: "10px 18px", fontSize: "13px" }}
+              disabled={refining || refinePrompt.trim().length < 2}
+            >
+              {refining ? "Refining with AI…" : "Update Study →"}
+            </button>
+          </form>
+          {refineError ? <p className="error-copy" style={{ marginTop: "10px" }}>{refineError}</p> : null}
+        </div>
+      ) : null}
 
       <div className="preview-grid">
         <section className="preview-main">

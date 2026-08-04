@@ -183,6 +183,7 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
             onAcceptProxy={() => void acceptProxy()}
             onRestart={() => router.push("/?new=1")}
             onLaunch={() => void launchCurrentStudy()}
+            onUpdatePreview={(updated) => setStudy(updated as PublicStudy)}
           />
         </section>
       </main>

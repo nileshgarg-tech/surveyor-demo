@@ -134,4 +134,8 @@ export const reportOutputJsonSchema: JsonSchema = strictObject({
   },
 });
 
+export const shortlistOutputJsonSchema: JsonSchema = strictObject({
+  filterIds: { type: "array", items: string({ minLength: 1 }), maxItems: 30 },
+});
+
 export const readinessJsonSchema: JsonSchema = strictObject({ ok: { type: "boolean", const: true } });

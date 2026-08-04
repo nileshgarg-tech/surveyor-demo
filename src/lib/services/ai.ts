@@ -19,14 +19,44 @@ import {
   buildCatalogIndex,
   finalizeTargetingPlan,
   hasUnsupportedBooleanLogic,
+  mergeAiShortlist,
   shortlistCatalog,
 } from "@/lib/domain/targeting";
 import { generateStructured } from "@/lib/providers/ai";
 import {
   intakeOutputJsonSchema,
   reportOutputJsonSchema,
+  shortlistOutputJsonSchema,
   targetingOutputJsonSchema,
 } from "@/lib/providers/json-schemas";
+
+const shortlistSystemInstruction = `You select relevant Prolific filter IDs from a compact catalog index for an audience request.
+Return filterIds as an array of exact id strings present in the catalog index.
+Select filters covering US states, countries/residence, age, sex, employment, industry, student status, language, political affiliation, education, or specific roles/hobbies requested.
+Do not invent IDs. Return only filterIds present in the catalog index.`;
+
+export async function shortlistCatalogWithAI(
+  requestedAudience: string,
+  catalog: NormalizedCatalogFilter[],
+): Promise<string[]> {
+  try {
+    const compactIndex = buildCatalogIndex(catalog);
+    const generated = await generateStructured({
+      schemaName: "surveyor_shortlist",
+      schema: shortlistOutputJsonSchema,
+      validator: z.object({ filterIds: z.array(z.string()) }),
+      systemInstruction: shortlistSystemInstruction,
+      input: JSON.stringify({
+        requestedAudience,
+        availableFilters: compactIndex,
+      }),
+      store: false,
+    });
+    return generated.data.filterIds;
+  } catch {
+    return [];
+  }
+}
 
 const targetingDraftSchema = z
   .object({
@@ -127,7 +157,12 @@ export async function generateTargetingPlan(options: {
   availabilityForFilters: (filters: TargetingPlan["filters"]) => Promise<number>;
   unsupportedBooleanLogic?: boolean;
 }): Promise<{ plan: TargetingPlan; provider: string; model: string }> {
-  const shortlist = shortlistCatalog(options.requestedAudience, options.catalog);
+  const aiSelectedIds = await shortlistCatalogWithAI(options.requestedAudience, options.catalog);
+  const shortlist =
+    aiSelectedIds.length > 0
+      ? mergeAiShortlist(aiSelectedIds, options.catalog, 35)
+      : shortlistCatalog(options.requestedAudience, options.catalog, 35);
+
   if (shortlist.length === 0) {
     const plan = finalizeTargetingPlan(
       {
@@ -208,4 +243,82 @@ export async function generateReportNarrative(options: {
     provider: generated.provider,
     model: generated.model,
   };
+}
+
+export async function refineStudyDraft(options: {
+  studyId: string;
+  userPrompt: string;
+}): Promise<{ study: ReturnType<typeof publicStudyResponse> }> {
+  const { getInternalStudy, getPublicStudy, publicStudyResponse, databaseError } = await import("@/lib/data");
+  const { createProlificClient } = await import("@/lib/providers/prolific");
+  const { getServiceSupabase } = await import("@/lib/supabase/server");
+  const { studyBriefSchema, surveySpecSchema, targetingPlanSchema } = await import("@/lib/domain/schemas");
+
+  const rawStudy = await getInternalStudy(options.studyId);
+  if (rawStudy.launch_confirmed_at || rawStudy.status !== "draft") {
+    throw new AppError("CONFLICT", "Only unlaunched study drafts can be refined.", { status: 409 });
+  }
+
+  const currentBrief = studyBriefSchema.parse(rawStudy.brief);
+  const currentSurvey = surveySpecSchema.parse(rawStudy.survey_spec);
+  const currentTargeting = targetingPlanSchema.parse(rawStudy.targeting_plan);
+
+  const refineInstruction = `You refine an existing unlaunched research study based on user feedback.
+Preserve valid existing details unless the user explicitly requests changes.
+Return only the requested schema. Ensure 2 to 6 questions using valid types ("multiple_choice", "opinion_scale", "yes_no", "short_text"). Every question must have a unique ref, title, required: true, and valid choices or scale.`;
+
+  const generated = await generateStructured({
+    schemaName: "surveyor_intake",
+    schema: intakeOutputJsonSchema,
+    validator: intakeModelResultSchema,
+    systemInstruction: refineInstruction,
+    input: JSON.stringify({
+      currentBrief,
+      currentSurvey,
+      requestedAudience: currentTargeting.requestedAudience,
+      userRefinementRequest: options.userPrompt,
+    }),
+    enableGrounding: true,
+  });
+
+  if (generated.data.kind !== "ready") {
+    throw new AppError("BAD_REQUEST", "Refinement did not yield a valid ready study.", { status: 422 });
+  }
+
+  const newBrief = generated.data.brief;
+  const newSurvey = finalizeSurvey(generated.data.survey);
+  const audienceCriteria = generated.data.audienceCriteria;
+
+  const catalogResult = await createProlificClient().fetchFilterCatalog();
+  const targetingResult = await generateTargetingPlan({
+    requestedAudience: newBrief.targetAudience,
+    audienceCriteria,
+    catalog: catalogResult.data,
+    availabilityForFilters: async (filters) => {
+      try {
+        const client = createProlificClient();
+        const res = await client.getEligibilityCount(filters);
+        return res.data.reportedCount;
+      } catch {
+        return 0;
+      }
+    },
+  });
+
+  const supabase = getServiceSupabase();
+  const { error } = await supabase
+    .from("studies")
+    .update({
+      brief: newBrief,
+      survey_spec: newSurvey,
+      targeting_plan: targetingResult.plan,
+      requested_audience: newBrief.targetAudience,
+      recruited_audience: targetingResult.plan.recruitedAudience,
+    })
+    .eq("id", options.studyId);
+
+  if (error) throw databaseError("Refined study could not be saved.", error);
+
+  const updatedPublicStudy = await getPublicStudy(options.studyId);
+  return { study: publicStudyResponse(updatedPublicStudy, true) };
 }

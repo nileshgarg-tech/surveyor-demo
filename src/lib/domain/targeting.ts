@@ -100,6 +100,12 @@ export function shortlistCatalog(
     ) {
       score += 50;
     }
+    if (
+      (idLower.includes("state") || titleLower.includes("state") || titleLower.includes("residence") || details.includes("state")) &&
+      /\b(state|california|texas|florida|new york|illinois|pennsylvania|ohio|georgia|north carolina|michigan|new jersey|virginia|washington|arizona|massachusetts|tennessee|indiana|missouri|maryland|wisconsin|colorado|minnesota|south carolina|alabama|louisiana|kentucky|oregon|oklahoma|connecticut|utah|iowa|nevada|arkansas|mississippi|kansas|new mexico|nebraska|idaho|hawaii|new hampshire|maine|rhode island|montana|delaware|south dakota|north dakota|alaska|vermont|wyoming)\b/i.test(requestedAudience)
+    ) {
+      score += 80;
+    }
 
     return { filter, score };
   });
@@ -114,6 +120,46 @@ export function shortlistCatalog(
   }
 
   return matches.slice(0, limit);
+}
+
+export function mergeAiShortlist(
+  aiSelectedIds: readonly string[],
+  catalog: readonly NormalizedCatalogFilter[],
+  limit = 35,
+): NormalizedCatalogFilter[] {
+  const catalogById = new Map(catalog.map((f) => [f.id, f]));
+  const result: NormalizedCatalogFilter[] = [];
+  const added = new Set<string>();
+
+  for (const id of aiSelectedIds) {
+    const filter = catalogById.get(id);
+    if (filter && !added.has(filter.id)) {
+      result.push(filter);
+      added.add(filter.id);
+    }
+  }
+
+  for (const filter of catalog) {
+    if (result.length >= limit) break;
+    const idLower = filter.id.toLowerCase();
+    if (
+      (idLower === "age" || idLower === "sex" || idLower === "gender" || isCurrentCountryFilter(filter)) &&
+      !added.has(filter.id)
+    ) {
+      result.push(filter);
+      added.add(filter.id);
+    }
+  }
+
+  for (const filter of catalog) {
+    if (result.length >= limit) break;
+    if (!added.has(filter.id)) {
+      result.push(filter);
+      added.add(filter.id);
+    }
+  }
+
+  return result.slice(0, limit);
 }
 
 export function validateSelectedFilters(
