@@ -19,7 +19,6 @@ import {
   buildCatalogIndex,
   finalizeTargetingPlan,
   hasUnsupportedBooleanLogic,
-  mergeAiShortlist,
   shortlistCatalog,
 } from "@/lib/domain/targeting";
 import { generateStructured } from "@/lib/providers/ai";
@@ -161,11 +160,7 @@ export async function generateTargetingPlan(options: {
   availabilityForFilters: (filters: TargetingPlan["filters"]) => Promise<number>;
   unsupportedBooleanLogic?: boolean;
 }): Promise<{ plan: TargetingPlan; provider: string; model: string }> {
-  const aiSelectedIds = await shortlistCatalogWithAI(options.requestedAudience, options.catalog);
-  const shortlist =
-    aiSelectedIds.length > 0
-      ? mergeAiShortlist(aiSelectedIds, options.catalog, 35)
-      : shortlistCatalog(options.requestedAudience, options.catalog, 35);
+  const shortlist = shortlistCatalog(options.requestedAudience, options.catalog, 35);
 
   if (shortlist.length === 0) {
     const plan = finalizeTargetingPlan(

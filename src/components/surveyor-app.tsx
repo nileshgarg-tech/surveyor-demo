@@ -478,7 +478,7 @@ function ProgressInstrument({ phase }: { phase: "intake" | "design" }) {
   const active = phase === "intake" ? 0 : 2;
   const steps = [
     "Understanding your question",
-    "Writing three questions",
+    "Designing the survey",
     "Checking the live Prolific audience",
     "Calculating time and reward",
   ];
