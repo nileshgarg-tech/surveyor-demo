@@ -23,7 +23,7 @@ export async function generateWithOpenAI<T>(options: {
   fetchImpl?: typeof fetch;
 }): Promise<StructuredGeneration<T>> {
   const env = requireLiveConfig(["OPENAI_API_KEY"]);
-  const model = getEnv().OPENAI_FALLBACK_MODEL ?? "gpt-4o-mini";
+  const model = getEnv().OPENAI_FALLBACK_MODEL ?? "gpt-5.6-luna";
   const providerOutputSchema = openAIResponseSchema(options.schema);
   let input = options.input;
   let lastValidationError: z.ZodError | undefined;
