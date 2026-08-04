@@ -5,6 +5,8 @@ import { readEventAuthority, setEventCookie } from "@/lib/security/auth";
 import { syncRecruitmentStatus } from "@/lib/services/collection";
 import { getServiceSupabase } from "@/lib/supabase/server";
 
+import { maybeStartReport } from "@/lib/services/reporting";
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
@@ -17,7 +19,11 @@ export async function GET(
     const authority = await readEventAuthority(request);
     await guardBrowserRead(request, "status", authority?.sessionId);
     await syncRecruitmentStatus(id);
-    const study = await getPublicStudy(id);
+    let study = await getPublicStudy(id);
+    if (study.status === "ready_to_report" || study.status === "reporting") {
+      void maybeStartReport(id).catch(() => undefined);
+      study = await getPublicStudy(id);
+    }
     const canViewResponses = authority ? await controlsStudy(id, authority.sessionId) : false;
     const canFinish = Boolean(
       canViewResponses &&

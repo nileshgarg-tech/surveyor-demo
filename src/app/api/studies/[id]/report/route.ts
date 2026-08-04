@@ -1,4 +1,3 @@
-import { after } from "next/server";
 import { z } from "zod";
 import { getPublicStudy } from "@/lib/data";
 import { errorResponse, jsonNoStore } from "@/lib/http";
@@ -23,9 +22,7 @@ export async function POST(
     if (study.status === "blocked") {
       await retryBlockedReport(id, authority.sessionId);
     } else {
-      after(async () => {
-        await maybeStartReport(id).catch(() => undefined);
-      });
+      await maybeStartReport(id);
     }
     return jsonNoStore({ study: await getPublicStudy(id) });
   } catch (error) {

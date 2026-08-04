@@ -17,6 +17,9 @@ type ReportClaim = {
 
 export async function maybeStartReport(studyId: string): Promise<boolean> {
   await ensureEventControlConfigured();
+  try {
+    await getServiceSupabase().rpc("recover_stale_reports", { p_limit: 10 });
+  } catch {}
   const study = await getInternalStudy(studyId);
   if (!study.event_session_id || study.status !== "ready_to_report") return false;
   const { data, error } = await getServiceSupabase().rpc("claim_report", {
