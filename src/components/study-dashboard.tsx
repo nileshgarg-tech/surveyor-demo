@@ -86,7 +86,15 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
     <main className="shell collection-shell">
       <header className="brandbar">
         <Link className="brand" href="/"><span className="brandmark" aria-hidden="true"><i /><i /><i /></span>Surveyor</Link>
-        <span className="live-pill"><i aria-hidden="true" /> Live study</span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Link className="secondary-button" href="/studies" style={{ padding: "6px 12px", fontSize: "12px" }}>
+            All Studies
+          </Link>
+          <Link className="secondary-button" href="/?new=1" style={{ padding: "6px 12px", fontSize: "12px" }}>
+            + New Study
+          </Link>
+          <span className="live-pill"><i aria-hidden="true" /> Live study</span>
+        </div>
       </header>
       <section className="workspace collection-workspace">
         <div className="collection-panel">
@@ -125,7 +133,15 @@ function ReportView({ study, canViewResponses }: { study: PublicStudy; canViewRe
     <main className="shell report-shell">
       <header className="brandbar">
         <Link className="brand" href="/"><span className="brandmark" aria-hidden="true"><i /><i /><i /></span>Surveyor</Link>
-        <span className="report-badge">{report.sampleSize} responses{report.completionReason === "manual" ? " · partial sample" : ""}</span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Link className="secondary-button" href="/studies" style={{ padding: "6px 12px", fontSize: "12px" }}>
+            All Studies
+          </Link>
+          <Link className="secondary-button" href="/?new=1" style={{ padding: "6px 12px", fontSize: "12px" }}>
+            + New Study
+          </Link>
+          <span className="report-badge">{report.sampleSize} responses{report.completionReason === "manual" ? " · partial sample" : ""}</span>
+        </div>
       </header>
       <article className="workspace report-workspace">
         <header className="report-hero">

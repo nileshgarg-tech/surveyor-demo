@@ -57,6 +57,16 @@ export type PublicStudy = {
   report: PublicReport | null;
 };
 
+export type PublicStudySummary = {
+  id: string;
+  title: string;
+  targetAudience: string;
+  status: StudyStatus;
+  participantCount: 5 | 10 | 20;
+  createdAt: string;
+  launchConfirmedAt: string | null;
+};
+
 const safeStudyColumns = [
   "id",
   "brief",
@@ -134,6 +144,28 @@ export async function getPublicStudy(studyId: string): Promise<PublicStudy> {
     staleOperation,
     report: parsePublicReport(reportResult.data as Record<string, unknown> | null),
   };
+}
+
+export async function getPublicStudiesList(): Promise<PublicStudySummary[]> {
+  const supabase = getServiceSupabase();
+  const { data, error } = await supabase
+    .from("studies")
+    .select("id,brief,status,participant_count,created_at,launch_confirmed_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw databaseError("Studies list could not be loaded.", error);
+  return (data ?? []).map((row) => {
+    const brief = studyBriefSchema.parse(row.brief);
+    return {
+      id: String(row.id),
+      title: brief.title,
+      targetAudience: brief.targetAudience,
+      status: studyStatusSchema.parse(row.status),
+      participantCount: parseParticipantCount(row.participant_count),
+      createdAt: String(row.created_at),
+      launchConfirmedAt: row.launch_confirmed_at === null ? null : String(row.launch_confirmed_at),
+    };
+  });
 }
 
 export async function getInternalStudy(studyId: string): Promise<Record<string, unknown>> {

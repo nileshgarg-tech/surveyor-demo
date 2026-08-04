@@ -127,10 +127,25 @@ export function SurveyorApp() {
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
+    const searchParams = new URLSearchParams(window.location.search);
+    const forceNew = searchParams.get("new") === "1" || searchParams.get("new") === "true";
+
     void activateEventLink()
       .then(async (access) => {
         setEventAccess(access);
-        await restorePersistedIntake();
+        if (forceNew) {
+          await api("/api/intake/respond", {
+            action: "restart",
+            requestId: crypto.randomUUID(),
+          }).catch(() => {});
+          window.history.replaceState(null, "", window.location.pathname);
+          setPhase("prompt");
+          setMessages([]);
+          setUserMessageCount(0);
+          setPreview(null);
+        } else {
+          await restorePersistedIntake();
+        }
       })
       .catch(() => setEventAccess("missing"));
   }, [restorePersistedIntake]);
@@ -260,14 +275,26 @@ export function SurveyorApp() {
           <span className="brandmark" aria-hidden="true"><i /><i /><i /></span>
           Surveyor
         </Link>
-        <span className={`access-pill access-${eventAccess}`}>
-          <span aria-hidden="true" />
-          {eventAccess === "checking"
-            ? "Checking event access"
-            : eventAccess === "granted"
-              ? "Event access ready"
-              : "Preview mode"}
-        </span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Link className="secondary-button" href="/studies" style={{ padding: "8px 14px", fontSize: "13px" }}>
+            All Studies
+          </Link>
+          <button
+            className="secondary-button"
+            onClick={() => void restart()}
+            style={{ padding: "8px 14px", fontSize: "13px" }}
+          >
+            + New Study
+          </button>
+          <span className={`access-pill access-${eventAccess}`}>
+            <span aria-hidden="true" />
+            {eventAccess === "checking"
+              ? "Checking event access"
+              : eventAccess === "granted"
+                ? "Event access ready"
+                : "Preview mode"}
+          </span>
+        </div>
       </header>
 
       <section className={`workspace phase-${phase}`}>
