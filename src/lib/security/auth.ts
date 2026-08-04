@@ -48,7 +48,7 @@ export function setEventCookie(response: NextResponse, token: string, expiresAt:
   });
 }
 
-export async function readEventAuthority(request: NextRequest): Promise<EventAuthority | null> {
+export async function readEventAuthority(request: NextRequest): Promise<(EventAuthority & { token?: string }) | null> {
   const token = request.cookies.get(EVENT_COOKIE)?.value;
   if (token) {
     try {
@@ -71,8 +71,8 @@ export async function readEventAuthority(request: NextRequest): Promise<EventAut
   }
 
   try {
-    const { authority } = await createEventAuthority();
-    return authority;
+    const created = await createEventAuthority();
+    return { ...created.authority, token: created.token };
   } catch {
     return null;
   }

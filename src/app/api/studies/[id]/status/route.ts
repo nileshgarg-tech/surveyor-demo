@@ -1,7 +1,7 @@
 import { getPublicStudy, publicStudyResponse } from "@/lib/data";
 import { errorResponse, jsonNoStore } from "@/lib/http";
 import { guardBrowserRead } from "@/lib/route-guard";
-import { readEventAuthority } from "@/lib/security/auth";
+import { readEventAuthority, setEventCookie } from "@/lib/security/auth";
 import { syncRecruitmentStatus } from "@/lib/services/collection";
 import { getServiceSupabase } from "@/lib/supabase/server";
 
@@ -27,11 +27,15 @@ export async function GET(
       study.launchConfirmedAt &&
       Date.parse(study.launchConfirmedAt) <= Date.now() - 2 * 60_000,
     );
-    return jsonNoStore({
+    const response = jsonNoStore({
       study: publicStudyResponse(study, canViewResponses),
       canFinish,
       canViewResponses,
     });
+    if (authority?.token) {
+      setEventCookie(response, authority.token, authority.expiresAt);
+    }
+    return response;
   } catch (error) {
     return errorResponse(error);
   }

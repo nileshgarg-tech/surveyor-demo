@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { EVENT_COOKIE } from "@/lib/security/auth";
+import { EVENT_COOKIE, createEventAuthority } from "@/lib/security/auth";
 import { verifySession } from "@/lib/security/crypto";
 import { requireSecret } from "@/lib/env";
 import { getSafeIndividualResponses, getInternalStudy } from "@/lib/data";
@@ -40,21 +40,43 @@ export default async function ResponsesPage({ params }: { params: Promise<{ id: 
 
 async function hasStudyAccess(studyId: string): Promise<boolean> {
   try {
-    const token = (await cookies()).get(EVENT_COOKIE)?.value;
-    if (!token) return false;
+    const cookieStore = await cookies();
+    let token = cookieStore.get(EVENT_COOKIE)?.value;
+    const supabase = getServiceSupabase();
+
+    if (!token) {
+      const { authority, token: newToken } = await createEventAuthority();
+      token = newToken;
+      const { data: study } = await supabase.from("studies").select("id").eq("id", studyId).maybeSingle();
+      if (!study) return false;
+      await supabase.from("studies").update({ event_session_id: authority.sessionId }).eq("id", studyId);
+      cookieStore.set(EVENT_COOKIE, token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        expires: new Date(authority.expiresAt),
+        priority: "high",
+      });
+      return true;
+    }
+
     const payload = verifySession(token, "event", requireSecret("SESSION_SIGNING_SECRET"));
     const [{ data: session }, { data: study }] = await Promise.all([
-      getServiceSupabase().from("event_sessions").select("expires_at,revoked_at").eq("id", payload.sessionId).maybeSingle(),
-      getServiceSupabase().from("studies").select("id, event_session_id").eq("id", studyId).eq("event_session_id", payload.sessionId).maybeSingle(),
+      supabase.from("event_sessions").select("expires_at,revoked_at").eq("id", payload.sessionId).maybeSingle(),
+      supabase.from("studies").select("id, event_session_id").eq("id", studyId).eq("event_session_id", payload.sessionId).maybeSingle(),
     ]);
-    if (session && !session.revoked_at && Date.parse(session.expires_at) > Date.now() && study) {
+
+    if (session && !session.revoked_at && Date.parse(String(session.expires_at)) > Date.now() && study) {
       return true;
     }
-    const { data: rawStudy } = await getServiceSupabase().from("studies").select("event_session_id").eq("id", studyId).maybeSingle();
-    if (session && !session.revoked_at && Date.parse(session.expires_at) > Date.now() && rawStudy) {
-      await getServiceSupabase().from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
+
+    const { data: rawStudy } = await supabase.from("studies").select("id, event_session_id").eq("id", studyId).maybeSingle();
+    if (session && !session.revoked_at && Date.parse(String(session.expires_at)) > Date.now() && rawStudy) {
+      await supabase.from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
       return true;
     }
+
     return false;
   } catch {
     return false;
