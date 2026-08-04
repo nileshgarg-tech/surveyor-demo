@@ -860,9 +860,15 @@ async function api<T = unknown>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     cache: "no-store",
   });
-  const payload = (await response.json()) as T & ApiError;
-  if (!response.ok) throw new Error(payload.error?.message ?? "Request failed. Please try again.");
-  return payload;
+  const text = await response.text();
+  let payload: (T & ApiError) | undefined;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error("The server is temporarily busy. Please click 'Send reply' to try again.");
+  }
+  if (!response.ok) throw new Error(payload?.error?.message ?? "Request failed. Please try again.");
+  return payload as T;
 }
 
 function messageFromError(error: unknown): string {

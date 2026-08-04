@@ -40,7 +40,11 @@ export async function shortlistCatalogWithAI(
   catalog: NormalizedCatalogFilter[],
 ): Promise<string[]> {
   try {
-    const compactIndex = buildCatalogIndex(catalog);
+    const compactIndex = catalog.slice(0, 80).map((filter) => ({
+      id: filter.id,
+      title: filter.title,
+      category: filter.category,
+    }));
     const generated = await generateStructured({
       schemaName: "surveyor_shortlist",
       schema: shortlistOutputJsonSchema,
