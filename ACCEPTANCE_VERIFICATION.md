@@ -6,10 +6,10 @@ This file distinguishes implementation evidence from the live checks that are in
 
 ## Verification runs
 
-- `npm run verify`: passed — strict TypeScript, ESLint, 125/125 Vitest tests, optimized Next.js production build.
+- `npm run verify`: passed: strict TypeScript, ESLint, 128/128 Vitest tests, optimized Next.js production build.
 - PostgreSQL 17 clean run: all three migrations applied with `ON_ERROR_STOP=1`.
-- SQL lifecycle assertions: passed — bounded publish recovery, deletion-only abandonment, PAUSE/STOP evidence-gated retry, slot-release race exclusion, and event-counter audit.
-- Runtime-control assertions: passed — stricter environment settings synchronized atomically; values beyond $25/$500/3 studies were rejected.
+- SQL lifecycle assertions: passed: bounded publish recovery, deletion-only abandonment, PAUSE/STOP evidence-gated retry, slot-release race exclusion, and event-counter audit.
+- Runtime-control assertions: passed: stricter environment settings synchronized atomically; values beyond $25/$500/3 studies were rejected.
 - Local production smoke: `/` returned 200; participant routes returned `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 - Headless Chrome render: 1440×900 poster viewport and 390×844 phone viewport rendered without horizontal overflow or clipped primary controls. Service-backed states still require configured Supabase/provider environments.
 

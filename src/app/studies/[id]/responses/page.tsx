@@ -29,7 +29,7 @@ export default async function ResponsesPage({ params }: { params: Promise<{ id: 
           {responses.map((response) => (
             <article key={response.participantNumber} className="response-card">
               <div className="response-card-head"><h2>Participant {response.participantNumber}</h2><time dateTime={response.submittedAt}>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(response.submittedAt))}</time></div>
-              <dl>{survey.questions.map((question) => <div key={question.ref}><dt>{question.title}</dt><dd>{String(response.answers[question.ref] ?? "—")}</dd></div>)}</dl>
+              <dl>{survey.questions.map((question) => <div key={question.ref}><dt>{question.title}</dt><dd>{String(response.answers[question.ref] ?? "N/A")}</dd></div>)}</dl>
             </article>
           ))}
         </div>

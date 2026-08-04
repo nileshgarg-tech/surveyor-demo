@@ -90,7 +90,7 @@ export function assertLaunchCost(
 }
 
 export function formatUsd(cents: number): string {
-  if (!Number.isSafeInteger(cents) || cents < 0) return "—";
+  if (!Number.isSafeInteger(cents) || cents < 0) return "N/A";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 

@@ -85,7 +85,7 @@ describe("fixed minimal content protection", () => {
     ).not.toThrow();
     expect(() =>
       enforceMinimalContentPolicy(
-        "Ask adults aged 18–65 living in the United States which channel they prefer for important appointment reminders—text message, email, or phone call—what matters most in that choice, and how strongly they prefer it.",
+        "Ask adults aged 18–65 living in the United States which channel they prefer for important appointment reminders: text message, email, or phone call; what matters most in that choice; and how strongly they prefer it.",
       ),
     ).not.toThrow();
     expect(() =>

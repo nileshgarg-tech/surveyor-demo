@@ -1,4 +1,4 @@
-# Surveyor — Prolific Demo Build Specification
+# Surveyor: Prolific Demo Build Specification
 
 > This is the complete specification for the stripped poster demo. It is planning context, not build authorization. Reviewing or editing this file never authorizes code, scaffolding, migrations, dependency installation, deployment, or paid API testing. Begin implementation only after the user separately and explicitly says to start building the approved spec.
 
@@ -140,7 +140,7 @@ rough_preview_cents = ceil(participants × reward_cents × 1.333)
 authoritative_total_cents = Prolific study-cost-calculator total_cost
 ```
 
-The local 1.333 academic multiplier is only a fast visual estimate. Before showing a final launchable price—and again inside the launch transaction—call Prolific's study cost calculator. Its `total_cost` includes the workspace's actual fees and VAT and is authoritative for both the $25 and $500 caps. If that check is unavailable, show a retry state and disable launch; never fall back to the rough estimate for authorization.
+The local 1.333 academic multiplier is only a fast visual estimate. Before showing a final launchable price, and again inside the launch transaction, call Prolific's study cost calculator. Its `total_cost` includes the workspace's actual fees and VAT and is authoritative for both the $25 and $500 caps. If that check is unavailable, show a retry state and disable launch; never fall back to the rough estimate for authorization.
 
 Also fetch the configured workspace balance during health/pre-launch checks. Require `currency_code=USD` and sufficient `available_balance` for the authoritative cost. A currency mismatch is a configuration error, not a conversion opportunity. The wallet check improves the error message; the local caps remain mandatory.
 
@@ -405,7 +405,7 @@ Obtain consent before data collection. Keep this compact and fixed, not AI-gener
 
 Participant continues with:
 
-> I agree — start survey
+> I agree and start survey
 
 Record consent/timestamp. A decline receives return-submission instructions.
 
@@ -568,10 +568,10 @@ Never store secrets or event launch tokens in database payloads.
 
 Pages:
 
-- `/` — prompt, intake, preview, launch, and current progress.
-- `/studies/[id]` — collection and report.
-- `/studies/[id]/responses` — anonymous response details.
-- `/survey/[id]` — consent, questions, and completion.
+- `/`: prompt, intake, preview, launch, and current progress.
+- `/studies/[id]`: collection and report.
+- `/studies/[id]/responses`: anonymous response details.
+- `/survey/[id]`: consent, questions, and completion.
 
 APIs/actions:
 
@@ -587,7 +587,7 @@ APIs/actions:
 - `POST /api/studies/[id]/reconcile`
 - `POST /api/surveys/[id]/consent`
 - `POST /api/surveys/[id]/submit`
-- `GET /api/internal/reconcile-stale` — protected by `Authorization: Bearer $CRON_SECRET`
+- `GET /api/internal/reconcile-stale`: protected by `Authorization: Bearer $CRON_SECRET`
 
 Every browser mutation validates content type, same-origin request metadata, shape, authority, lifecycle, rate limit, and idempotency. Researcher mutations require the event session linked to that study; participant mutations require the study-bound participant session. The scheduled recovery endpoint calls domain functions directly. Responses containing study, participant, or provider state use `Cache-Control: no-store`. No API response returns secrets or private Prolific identifiers.
 

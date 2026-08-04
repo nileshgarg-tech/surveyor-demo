@@ -3,7 +3,7 @@ import "./globals.css";
 import "./dashboard.css";
 
 export const metadata: Metadata = {
-  title: "Surveyor — Ask a group",
+  title: "Surveyor: Ask a group",
   description: "Describe a group and a question. Surveyor recruits real participants and reports what they say.",
 };
 

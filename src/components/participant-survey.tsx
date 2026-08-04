@@ -165,7 +165,7 @@ export function ParticipantSurvey({
               onClick={() => void recordConsent(true)}
               type="button"
             >
-              {pending === "consent" ? "Saving consent…" : "I agree — start survey"}
+              {pending === "consent" ? "Saving consent…" : "I agree and start survey"}
             </button>
             <button
               className={styles.secondaryButton}

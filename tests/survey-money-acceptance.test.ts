@@ -217,7 +217,7 @@ describe("integer money and participant-time rules", () => {
     expect(roughPreviewCents(10, 60)).toBe(800);
     expect(roughPreviewCents(20, 60)).toBe(1_600);
     expect(formatUsd(1_600)).toBe("$16.00");
-    expect(formatUsd(-1)).toBe("—");
+    expect(formatUsd(-1)).toBe("N/A");
   });
 
   it("uses Prolific's documented maximum allowed time formula", () => {

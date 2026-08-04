@@ -319,11 +319,11 @@ function PromptPanel(props: {
   return (
     <div className={`prompt-panel${hasConversation ? " has-conversation" : ""}`}>
       <div className="prompt-copy">
-        <p className="eyebrow">Research copilot</p>
+        <p className="eyebrow">Opinion mapper</p>
         <h1>
           {hasConversation
             ? "Let’s sharpen the study."
-            : "Tell me what you want to learn—and from whom."}
+            : "Tell me what you want to learn and who you want to ask."}
         </h1>
         <p className="lede">
           {hasConversation
@@ -360,7 +360,7 @@ function PromptPanel(props: {
           onChange={(event) => props.setPrompt(event.target.value)}
           placeholder={
             hasConversation
-              ? "Reply naturally — one sentence is enough."
+              ? "Reply naturally. One sentence is enough."
               : "For example: Ask US adults whether they prefer a four-day or five-day workweek, why, and how strongly."
           }
           rows={hasConversation ? 3 : 4}
