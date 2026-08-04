@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { PublicStudy } from "@/lib/data";
 
 type StatusPayload = {
@@ -11,10 +12,13 @@ type StatusPayload = {
 };
 
 export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) {
+  const router = useRouter();
   const [study, setStudy] = useState(initialStudy);
   const [canFinish, setCanFinish] = useState(false);
   const [canViewResponses, setCanViewResponses] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const recoveryRequested = useRef(false);
   const reportRequested = useRef(false);
 
@@ -76,8 +80,30 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
     }
   }
 
+  async function deleteCurrentStudy() {
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/studies/${study.id}`, { method: "DELETE" });
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok) throw new Error(body.error?.message ?? "Study could not be deleted.");
+      router.push("/studies");
+    } catch (delError) {
+      setError(delError instanceof Error ? delError.message : "Study could not be deleted.");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   if (study.report) {
-    return <ReportView study={study} canViewResponses={canViewResponses} />;
+    return (
+      <ReportView
+        study={study}
+        canViewResponses={canViewResponses}
+        onDelete={deleteCurrentStudy}
+        deleting={deleting}
+      />
+    );
   }
 
   const progress = Math.min(100, Math.round((study.responseCount / study.participantCount) * 100));
@@ -108,8 +134,38 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
             <div className="study-facts">
               <span>{study.targeting.recruitedAudience}</span><span>{study.estimatedMinutes} minutes</span><span>{study.survey.questions.length} questions</span>
             </div>
-            {canFinish ? <button className="secondary-button finish-button" onClick={() => void finish()}>Finish with current responses</button> : null}
-            {study.status === "blocked" ? <button className="secondary-button finish-button" onClick={() => void retryReport()}>Retry report</button> : null}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "24px" }}>
+              {canFinish ? <button className="secondary-button" style={{ marginTop: 0 }} onClick={() => void finish()}>Finish with current responses</button> : null}
+              {study.status === "blocked" ? <button className="secondary-button" style={{ marginTop: 0 }} onClick={() => void retryReport()}>Retry report</button> : null}
+              {confirmDelete ? (
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <button
+                    className="secondary-button"
+                    style={{ background: "var(--red)", color: "white", borderColor: "var(--red)", marginTop: 0 }}
+                    disabled={deleting}
+                    onClick={() => void deleteCurrentStudy()}
+                  >
+                    {deleting ? "Deleting…" : "Confirm Delete"}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    style={{ marginTop: 0 }}
+                    disabled={deleting}
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="secondary-button"
+                  style={{ color: "var(--red)", borderColor: "#f2cfce", marginTop: 0 }}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  Delete study
+                </button>
+              )}
+            </div>
             {error ? <p className="error-copy" role="alert">{error}</p> : null}
           </div>
         </div>
@@ -126,7 +182,18 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
   );
 }
 
-function ReportView({ study, canViewResponses }: { study: PublicStudy; canViewResponses: boolean }) {
+function ReportView({
+  study,
+  canViewResponses,
+  onDelete,
+  deleting,
+}: {
+  study: PublicStudy;
+  canViewResponses: boolean;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const report = study.report;
   if (!report) return null;
   return (
@@ -175,7 +242,36 @@ function ReportView({ study, canViewResponses }: { study: PublicStudy; canViewRe
         </div>
         <footer className="report-footer">
           <p>Observed sample only · Directional, not a population estimate</p>
-          {canViewResponses ? <Link className="secondary-button" href={`/studies/${study.id}/responses`}>View individual responses</Link> : null}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {canViewResponses ? <Link className="secondary-button" href={`/studies/${study.id}/responses`}>View individual responses</Link> : null}
+            {confirmDelete ? (
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  className="secondary-button"
+                  style={{ background: "var(--red)", color: "white", borderColor: "var(--red)" }}
+                  disabled={deleting}
+                  onClick={onDelete}
+                >
+                  {deleting ? "Deleting…" : "Confirm Delete"}
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={deleting}
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className="secondary-button"
+                style={{ color: "var(--red)", borderColor: "#f2cfce" }}
+                onClick={() => setConfirmDelete(true)}
+              >
+                Delete study
+              </button>
+            )}
+          </div>
         </footer>
       </article>
     </main>

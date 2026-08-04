@@ -168,6 +168,49 @@ export async function getPublicStudiesList(): Promise<PublicStudySummary[]> {
   });
 }
 
+export async function deleteStudy(studyId: string): Promise<void> {
+  const supabase = getServiceSupabase();
+
+  const { data: studyRow, error: studyFetchError } = await supabase
+    .from("studies")
+    .select("id,source_intake_id")
+    .eq("id", studyId)
+    .maybeSingle();
+  if (studyFetchError) throw databaseError("Study could not be fetched for deletion.", studyFetchError);
+  if (!studyRow) throw new AppError("NOT_FOUND", "Study not found.", { status: 404 });
+
+  const sourceIntakeId = studyRow.source_intake_id ? String(studyRow.source_intake_id) : null;
+
+  const { error: reportsError } = await supabase.from("reports").delete().eq("study_id", studyId);
+  if (reportsError) throw databaseError("Study reports could not be deleted.", reportsError);
+
+  const { error: responsesError } = await supabase
+    .from("participant_responses")
+    .delete()
+    .eq("study_id", studyId);
+  if (responsesError) throw databaseError("Study responses could not be deleted.", responsesError);
+
+  const { error: clearFkError } = await supabase
+    .from("studies")
+    .update({ cost_provider_event_id: null, balance_provider_event_id: null })
+    .eq("id", studyId);
+  if (clearFkError) throw databaseError("Study provider event references could not be cleared.", clearFkError);
+
+  const { error: eventsError } = await supabase.from("provider_events").delete().eq("study_id", studyId);
+  if (eventsError) throw databaseError("Study provider events could not be deleted.", eventsError);
+
+  const { error: deleteStudyError } = await supabase.from("studies").delete().eq("id", studyId);
+  if (deleteStudyError) throw databaseError("Study could not be deleted.", deleteStudyError);
+
+  if (sourceIntakeId) {
+    const { error: intakeError } = await supabase
+      .from("intake_sessions")
+      .delete()
+      .eq("id", sourceIntakeId);
+    if (intakeError) throw databaseError("Intake session could not be deleted.", intakeError);
+  }
+}
+
 export async function getInternalStudy(studyId: string): Promise<Record<string, unknown>> {
   const { data, error } = await getServiceSupabase()
     .from("studies")
