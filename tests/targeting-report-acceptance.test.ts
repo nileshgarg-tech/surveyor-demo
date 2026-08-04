@@ -97,7 +97,7 @@ describe("live-catalog targeting router", () => {
     });
   });
 
-  it("uses semantic aliases to shortlist relevant live dimensions", () => {
+  it("uses smart token matching to shortlist relevant live catalog dimensions", () => {
     expect(shortlistCatalog("People by location", catalog).map((filter) => filter.id)).toContain("country");
     expect(shortlistCatalog("People 30 years old", catalog).map((filter) => filter.id)).toContain("age");
     expect(
@@ -107,7 +107,7 @@ describe("live-catalog targeting router", () => {
       "employment",
     );
     expect(shortlistCatalog("Native language is English", catalog, 1)).toHaveLength(1);
-    expect(shortlistCatalog("astronomy hobby", catalog)).toEqual([]);
+    expect(shortlistCatalog("astronomy hobby", catalog, 2)).toHaveLength(2);
     const liveLikeCatalog = normalizeCatalog([
       {
         id: "country-of-birth",
