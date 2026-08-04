@@ -31,7 +31,7 @@ export async function generateStructured<T>(options: {
     });
   } catch (error) {
     const env = getEnv();
-    const fallbackConfigured = Boolean(env.OPENAI_API_KEY && env.OPENAI_FALLBACK_MODEL);
+    const fallbackConfigured = Boolean(env.OPENAI_API_KEY);
     if (!(error instanceof ProviderError) || !error.fallbackEligible || !fallbackConfigured) throw error;
     return generateWithOpenAI({
       schemaName: options.schemaName,

@@ -22,7 +22,8 @@ export async function generateWithOpenAI<T>(options: {
   input: string;
   fetchImpl?: typeof fetch;
 }): Promise<StructuredGeneration<T>> {
-  const env = requireLiveConfig(["OPENAI_API_KEY", "OPENAI_FALLBACK_MODEL"]);
+  const env = requireLiveConfig(["OPENAI_API_KEY"]);
+  const model = getEnv().OPENAI_FALLBACK_MODEL ?? "gpt-4o-mini";
   const providerOutputSchema = openAIResponseSchema(options.schema);
   let input = options.input;
   let lastValidationError: z.ZodError | undefined;
@@ -38,7 +39,7 @@ export async function generateWithOpenAI<T>(options: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: env.OPENAI_FALLBACK_MODEL,
+          model: model,
           instructions: options.systemInstruction,
           input,
           store: false,
@@ -87,7 +88,7 @@ export async function generateWithOpenAI<T>(options: {
       return {
         data: validated.data,
         provider: "openai",
-        model: env.OPENAI_FALLBACK_MODEL,
+        model: model,
       };
     }
 

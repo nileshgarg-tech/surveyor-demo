@@ -15,7 +15,7 @@ import { generateIntakeResponse } from "@/lib/services/ai";
 import { databaseError, getPublicStudy } from "@/lib/data";
 import { getServiceSupabase } from "@/lib/supabase/server";
 
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 const messageBodySchema = z
   .object({
@@ -168,7 +168,12 @@ export async function POST(request: import("next/server").NextRequest) {
       claimed = updated as IntakeRow;
     }
 
-    const generated = await generateIntakeResponse({ messages: claimed.messages });
+    const generated = await Promise.race([
+      generateIntakeResponse({ messages: claimed.messages }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new AppError("PROVIDER_TRANSIENT", "The AI took too long to respond. Please try again.", { status: 503, retryable: true })), 75_000)
+      ),
+    ]);
     const assistantContent =
       generated.result.kind === "clarify"
         ? generated.result.question

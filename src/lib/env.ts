@@ -39,7 +39,7 @@ const envSchema = z
     TARGET_HOURLY_PAY_CENTS: intWithDefault(1_200, 1_200, 100_000),
     STALE_LAUNCH_MINUTES: intWithDefault(5, 1, 120),
     REPORT_STALE_MINUTES: intWithDefault(2, 1, 120),
-    MAX_PROVIDER_RETRIES: intWithDefault(3, 0, 8),
+    MAX_PROVIDER_RETRIES: intWithDefault(2, 0, 8),
     MAX_REPORT_ATTEMPTS: intWithDefault(3, 1, 10),
     RECOVERY_BATCH_SIZE: intWithDefault(10, 1, 100),
     RESEARCH_CONTACT_EMAIL: z.preprocess(
