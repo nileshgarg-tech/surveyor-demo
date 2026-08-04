@@ -47,16 +47,15 @@ async function controlsStudy(studyId: string, eventSessionId: string): Promise<b
   if (!study) return false;
   if (study.event_session_id === eventSessionId) return true;
 
-  if (study.event_session_id) {
-    const { data: oldSession } = await supabase
-      .from("event_sessions")
-      .select("expires_at, revoked_at")
-      .eq("id", study.event_session_id)
-      .maybeSingle();
-    if (!oldSession || oldSession.revoked_at || Date.parse(String(oldSession.expires_at)) <= Date.now()) {
-      await supabase.from("studies").update({ event_session_id: eventSessionId }).eq("id", studyId);
-      return true;
-    }
+  const { data: currentSession } = await supabase
+    .from("event_sessions")
+    .select("id, expires_at, revoked_at")
+    .eq("id", eventSessionId)
+    .maybeSingle();
+
+  if (currentSession && !currentSession.revoked_at && Date.parse(String(currentSession.expires_at)) > Date.now()) {
+    await supabase.from("studies").update({ event_session_id: eventSessionId }).eq("id", studyId);
+    return true;
   }
   return false;
 }

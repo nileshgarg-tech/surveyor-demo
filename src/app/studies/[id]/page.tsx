@@ -40,19 +40,10 @@ async function checkCanView(studyId: string): Promise<boolean> {
     if (!session || session.revoked_at || Date.parse(session.expires_at) <= Date.now() || !study) {
       return false;
     }
-    if (study.event_session_id === payload.sessionId) return true;
-    if (study.event_session_id) {
-      const { data: oldSession } = await supabase
-        .from("event_sessions")
-        .select("expires_at, revoked_at")
-        .eq("id", study.event_session_id)
-        .maybeSingle();
-      if (!oldSession || oldSession.revoked_at || Date.parse(String(oldSession.expires_at)) <= Date.now()) {
-        await supabase.from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
-        return true;
-      }
+    if (study.event_session_id !== payload.sessionId) {
+      await supabase.from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
     }
-    return false;
+    return true;
   } catch {
     return false;
   }

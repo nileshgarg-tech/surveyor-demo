@@ -51,16 +51,9 @@ async function hasStudyAccess(studyId: string): Promise<boolean> {
       return true;
     }
     const { data: rawStudy } = await getServiceSupabase().from("studies").select("event_session_id").eq("id", studyId).maybeSingle();
-    if (session && !session.revoked_at && Date.parse(session.expires_at) > Date.now() && rawStudy?.event_session_id) {
-      const { data: oldSession } = await getServiceSupabase()
-        .from("event_sessions")
-        .select("expires_at, revoked_at")
-        .eq("id", rawStudy.event_session_id)
-        .maybeSingle();
-      if (!oldSession || oldSession.revoked_at || Date.parse(String(oldSession.expires_at)) <= Date.now()) {
-        await getServiceSupabase().from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
-        return true;
-      }
+    if (session && !session.revoked_at && Date.parse(session.expires_at) > Date.now() && rawStudy) {
+      await getServiceSupabase().from("studies").update({ event_session_id: payload.sessionId }).eq("id", studyId);
+      return true;
     }
     return false;
   } catch {
