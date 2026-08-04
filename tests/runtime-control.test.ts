@@ -15,11 +15,11 @@ function compact(value: string): string {
 }
 
 describe("deployment controls remain inside specification ceilings", () => {
-  it("defaults to USD, $25/$500, three global studies, and $12/hour", () => {
+  it("defaults to USD, $30/$500, three global studies, and $12/hour", () => {
     const env = getEnv({ NODE_ENV: "test" });
     expect(env).toMatchObject({
       EXPECTED_PROLIFIC_CURRENCY: "USD",
-      MAX_STUDY_BUDGET_CENTS: 2_500,
+      MAX_STUDY_BUDGET_CENTS: 3_000,
       MAX_EVENT_BUDGET_CENTS: 50_000,
       MAX_CONCURRENT_STUDIES: 3,
       TARGET_HOURLY_PAY_CENTS: 1_200,

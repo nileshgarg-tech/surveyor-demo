@@ -33,7 +33,7 @@ const envSchema = z
     PROLIFIC_WORKSPACE_ID: optionalString,
     PROLIFIC_PROJECT_ID: optionalString,
     EXPECTED_PROLIFIC_CURRENCY: z.literal("USD").default("USD"),
-    MAX_STUDY_BUDGET_CENTS: intWithDefault(2_500, 1, 3_500),
+    MAX_STUDY_BUDGET_CENTS: intWithDefault(3_000, 1, 3_500),
     MAX_EVENT_BUDGET_CENTS: intWithDefault(50_000, 1, 50_000),
     MAX_CONCURRENT_STUDIES: intWithDefault(3, 1, 3),
     TARGET_HOURLY_PAY_CENTS: intWithDefault(1_200, 1_200, 100_000),
