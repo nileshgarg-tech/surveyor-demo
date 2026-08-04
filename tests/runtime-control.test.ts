@@ -15,13 +15,13 @@ function compact(value: string): string {
 }
 
 describe("deployment controls remain inside specification ceilings", () => {
-  it("defaults to USD, $30/$500, three global studies, and $12/hour", () => {
+  it("defaults to USD, $30/$500, five global studies, and $12/hour", () => {
     const env = getEnv({ NODE_ENV: "test" });
     expect(env).toMatchObject({
       EXPECTED_PROLIFIC_CURRENCY: "USD",
       MAX_STUDY_BUDGET_CENTS: 3_000,
       MAX_EVENT_BUDGET_CENTS: 50_000,
-      MAX_CONCURRENT_STUDIES: 3,
+      MAX_CONCURRENT_STUDIES: 5,
       TARGET_HOURLY_PAY_CENTS: 1_200,
     });
   });
@@ -30,7 +30,7 @@ describe("deployment controls remain inside specification ceilings", () => {
     { EXPECTED_PROLIFIC_CURRENCY: "GBP" },
     { MAX_STUDY_BUDGET_CENTS: "3501" },
     { MAX_EVENT_BUDGET_CENTS: "50001" },
-    { MAX_CONCURRENT_STUDIES: "4" },
+    { MAX_CONCURRENT_STUDIES: "6" },
     { TARGET_HOURLY_PAY_CENTS: "1199" },
     { MAX_STUDY_BUDGET_CENTS: "2500", MAX_EVENT_BUDGET_CENTS: "2000" },
   ])("rejects a deployment override that weakens a hard safety bound: %o", (override) => {
