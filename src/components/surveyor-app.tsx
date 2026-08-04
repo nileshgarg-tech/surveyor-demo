@@ -87,10 +87,10 @@ export function SurveyorApp() {
         requestId: crypto.randomUUID(),
       });
       if (!payload.state) return;
-      setMessages(payload.state.messages);
-      setUserMessageCount(payload.state.userMessageCount);
       if (payload.study) {
         setPreview(payload.study);
+        setMessages([]);
+        setUserMessageCount(0);
         setPhase("prompt");
         return;
       }
@@ -101,9 +101,13 @@ export function SurveyorApp() {
           requestId: crypto.randomUUID(),
         });
         setPreview(designed.study);
+        setMessages([]);
+        setUserMessageCount(0);
         setPhase("prompt");
         return;
       }
+      setMessages(payload.state.messages);
+      setUserMessageCount(payload.state.userMessageCount);
       if (payload.state.status === "insufficient") {
         const lastAssistant = [...payload.state.messages]
           .reverse()
@@ -278,7 +282,7 @@ export function SurveyorApp() {
   return (
     <main className="shell">
       <header className="brandbar">
-        <Link className="brand" href="/" aria-label="Surveyor home">
+        <Link className="brand" href="/" aria-label="Surveyor home" onClick={() => void restart()}>
           <span className="brandmark" aria-hidden="true"><i /><i /><i /></span>
           Surveyor
         </Link>
