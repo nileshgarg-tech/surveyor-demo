@@ -30,17 +30,17 @@ export async function POST(
       });
     }
 
+    const env = getEnv();
     const options = Array.isArray(study.participant_cost_options)
       ? (study.participant_cost_options as Array<Record<string, unknown>>)
       : [];
     const selected = options.find((option) => Number(option.participants) === body.participantCount);
-    if (!selected || selected.enabled !== true || !Number.isSafeInteger(Number(selected.totalCents))) {
+    const totalCents = Number(selected?.totalCents);
+    if (!selected || !Number.isSafeInteger(totalCents) || totalCents > env.MAX_STUDY_BUDGET_CENTS) {
       throw new AppError("FORBIDDEN", String(selected?.error ?? "That participant option cannot be launched."), {
         status: 422,
       });
     }
-
-    const env = getEnv();
     const reward = rewardCents(Number(study.estimated_minutes ?? 3), env.TARGET_HOURLY_PAY_CENTS);
     const { data, error } = await getServiceSupabase()
       .from("studies")

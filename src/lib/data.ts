@@ -285,18 +285,26 @@ function parseParticipantCount(value: unknown): 5 | 10 | 20 {
 
 function parseCostOptions(value: unknown): ParticipantCostOption[] {
   if (!Array.isArray(value)) return [];
+  const maxCap = getEnv().MAX_STUDY_BUDGET_CENTS;
   return value.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
     const row = entry as Record<string, unknown>;
     const participants = Number(row.participants);
     if (participants !== 5 && participants !== 10 && participants !== 20) return [];
+    const totalCents = row.totalCents === null ? null : Number(row.totalCents);
+    const exceedsCap = totalCents !== null && totalCents > maxCap;
+    const enabled = totalCents !== null && !exceedsCap;
     return [
       {
         participants,
-        totalCents: row.totalCents === null ? null : Number(row.totalCents),
-        enabled: row.enabled === true,
+        totalCents,
+        enabled,
         checkedAt: row.checkedAt === null ? null : String(row.checkedAt),
-        ...(typeof row.error === "string" ? { error: row.error } : {}),
+        ...(exceedsCap
+          ? { error: `Exceeds the $${(maxCap / 100).toFixed(0)} study cap.` }
+          : typeof row.error === "string" && !row.error.includes("study cap")
+            ? { error: row.error }
+            : {}),
       } as ParticipantCostOption,
     ];
   });
