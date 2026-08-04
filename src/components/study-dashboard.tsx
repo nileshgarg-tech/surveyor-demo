@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PublicStudy } from "@/lib/data";
+import { PreviewPanel } from "./surveyor-app";
 
 type StatusPayload = {
   study: PublicStudy;
@@ -117,6 +118,49 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
         onDelete={deleteCurrentStudy}
         deleting={deleting}
       />
+    );
+  }
+
+  if (!study.launchConfirmedAt) {
+    return (
+      <main className="shell">
+        <header className="brandbar">
+          <Link className="brand" href="/">
+            <span className="brandmark" aria-hidden="true"><i /><i /><i /></span>
+            Surveyor
+          </Link>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Link className="secondary-button" href="/studies" style={{ padding: "8px 14px", fontSize: "13px" }}>
+              All Studies
+            </Link>
+            <Link className="secondary-button" href="/?new=1" style={{ padding: "8px 14px", fontSize: "13px" }}>
+              + New Study
+            </Link>
+            <button
+              className="secondary-button"
+              style={{ color: "var(--red)", borderColor: "#f2cfce", padding: "8px 14px", fontSize: "13px" }}
+              disabled={deleting}
+              onClick={() => void deleteCurrentStudy()}
+            >
+              {deleting ? "Deleting…" : "Delete Draft"}
+            </button>
+          </div>
+        </header>
+        <section className="workspace">
+          <PreviewPanel
+            preview={study}
+            eventAccess="granted"
+            launchDisabled={launching}
+            launching={launching}
+            updatingCount={false}
+            error={error}
+            onCount={() => {}}
+            onAcceptProxy={() => {}}
+            onRestart={() => router.push("/?new=1")}
+            onLaunch={() => void launchCurrentStudy()}
+          />
+        </section>
+      </main>
     );
   }
 

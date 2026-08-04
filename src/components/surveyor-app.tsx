@@ -506,8 +506,8 @@ function ProgressInstrument({ phase }: { phase: "intake" | "design" }) {
   );
 }
 
-function PreviewPanel(props: {
-  preview: Preview;
+export function PreviewPanel(props: {
+  preview: Preview | import("@/lib/data").PublicStudy;
   eventAccess: "checking" | "granted" | "missing";
   launchDisabled: boolean;
   launching: boolean;
@@ -653,6 +653,8 @@ function PreviewPanel(props: {
   );
 }
 
+
+
 async function activateEventLink(): Promise<"granted" | "missing"> {
   const fragment = new URLSearchParams(window.location.hash.slice(1));
   const token = fragment.get("event");
@@ -695,9 +697,14 @@ function formatUsd(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-function questionTypeLabel(question: Survey["questions"][number]): string {
+function questionTypeLabel(question: {
+  type: string;
+  choices?: string[] | undefined;
+  scale?: { min: number; max: number } | undefined;
+  description?: string | undefined;
+}): string {
   if (question.type === "multiple_choice") return `${question.choices?.length ?? 0} choices`;
   if (question.type === "opinion_scale") return `${question.scale?.min ?? 1}–${question.scale?.max ?? 5} opinion scale`;
   if (question.type === "yes_no") return "Yes or no";
-  return "Short response · 280 characters max";
+  return `Short response · ${question.description ?? "280 characters max"}`;
 }
