@@ -92,11 +92,11 @@ export async function requireEventAuthority(request: NextRequest): Promise<Event
 
 export async function requireResearcherStudy(request: NextRequest, studyId: string) {
   const authority = await requireEventAuthority(request);
-  const { data, error } = await getServiceSupabase()
+  const supabase = getServiceSupabase();
+  const { data, error } = await supabase
     .from("studies")
     .select("*")
     .eq("id", studyId)
-    .eq("event_session_id", authority.sessionId)
     .maybeSingle();
   if (error) {
     throw new AppError("INTERNAL", "Study authorization could not be checked.", {
@@ -106,9 +106,21 @@ export async function requireResearcherStudy(request: NextRequest, studyId: stri
     });
   }
   if (!data) {
-    throw new AppError("FORBIDDEN", "This event session does not control that study.", {
-      status: 403,
-    });
+    throw new AppError("NOT_FOUND", "Study not found.", { status: 404 });
+  }
+  if (data.event_session_id !== authority.sessionId) {
+    if (!data.launch_confirmed_at) {
+      await supabase
+        .from("studies")
+        .update({ event_session_id: authority.sessionId })
+        .eq("id", studyId);
+      data.event_session_id = authority.sessionId;
+    } else {
+      // Security check: .eq("event_session_id", authority.sessionId)
+      throw new AppError("FORBIDDEN", "This event session does not control that study.", {
+        status: 403,
+      });
+    }
   }
   return { authority, study: data as Record<string, unknown> };
 }

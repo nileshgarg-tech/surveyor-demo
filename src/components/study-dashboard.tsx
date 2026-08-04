@@ -21,6 +21,7 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [updatingCount, setUpdatingCount] = useState(false);
   const recoveryRequested = useRef(false);
   const reportRequested = useRef(false);
 
@@ -110,6 +111,30 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
     }
   }
 
+  async function changeParticipantCount(count: 5 | 10 | 20) {
+    if (updatingCount || count === study.participantCount) return;
+    setUpdatingCount(true);
+    setError(null);
+    try {
+      await mutate("/api/studies/from-intake", { participantCount: count });
+      await refresh();
+    } catch (countErr) {
+      setError(countErr instanceof Error ? countErr.message : "Count update failed.");
+    } finally {
+      setUpdatingCount(false);
+    }
+  }
+
+  async function acceptProxy() {
+    setError(null);
+    try {
+      await mutate(`/api/studies/${study.id}/accept-proxy`);
+      await refresh();
+    } catch (proxyErr) {
+      setError(proxyErr instanceof Error ? proxyErr.message : "Proxy acceptance failed.");
+    }
+  }
+
   if (study.report) {
     return (
       <ReportView
@@ -150,12 +175,12 @@ export function StudyDashboard({ initialStudy }: { initialStudy: PublicStudy }) 
           <PreviewPanel
             preview={study}
             eventAccess="granted"
-            launchDisabled={launching}
+            launchDisabled={launching || updatingCount}
             launching={launching}
-            updatingCount={false}
+            updatingCount={updatingCount}
             error={error}
-            onCount={() => {}}
-            onAcceptProxy={() => {}}
+            onCount={(count) => void changeParticipantCount(count)}
+            onAcceptProxy={() => void acceptProxy()}
             onRestart={() => router.push("/?new=1")}
             onLaunch={() => void launchCurrentStudy()}
           />
@@ -362,11 +387,11 @@ function collectionStage(study: PublicStudy) {
   return { key: "finding", passed: [], eyebrow: "Collection in progress", title: "Finding participants", description: "The study is live on Prolific. Responses will appear here as valid completions arrive." };
 }
 
-async function mutate(url: string) {
+async function mutate(url: string, payload: Record<string, unknown> = {}) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ requestId: crypto.randomUUID() }),
+    body: JSON.stringify({ requestId: crypto.randomUUID(), ...payload }),
     cache: "no-store",
   });
   const body = (await response.json()) as { error?: { message?: string } };
