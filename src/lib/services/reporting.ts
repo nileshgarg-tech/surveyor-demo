@@ -104,12 +104,26 @@ async function generateClaimedReport(claim: ReportClaim): Promise<void> {
         .map((ref) => answers[ref])
         .filter((value): value is string => typeof value === "string"),
     );
-    const generated = await generateReportNarrative({
-      survey,
-      responses,
-      anonymousTextAnswers,
-      completionReason: claim.completionReason,
-    });
+    const generated = await Promise.race([
+      generateReportNarrative({
+        survey,
+        responses,
+        anonymousTextAnswers,
+        completionReason: claim.completionReason,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new AppError("PROVIDER_TRANSIENT", "The AI took too long to respond. Please try again.", {
+                status: 503,
+                retryable: true,
+              }),
+            ),
+          70_000,
+        ),
+      ),
+    ]);
     await heartbeat(claim);
     const { error: completeError } = await getServiceSupabase().rpc("complete_report", {
       p_study_id: claim.studyId,
