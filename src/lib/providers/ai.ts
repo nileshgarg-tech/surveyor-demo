@@ -16,6 +16,8 @@ export async function generateStructured<T>(options: {
   enableGrounding?: boolean;
   geminiFetch?: typeof fetch;
   openaiFetch?: typeof fetch;
+  timeoutMs?: number;
+  maxRetries?: number;
 }): Promise<StructuredGeneration<T>> {
   try {
     return await generateWithGemini({
@@ -28,6 +30,8 @@ export async function generateStructured<T>(options: {
       ...(options.store !== undefined ? { store: options.store } : {}),
       ...(options.enableGrounding !== undefined ? { enableGrounding: options.enableGrounding } : {}),
       ...(options.geminiFetch ? { fetchImpl: options.geminiFetch } : {}),
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+      ...(options.maxRetries !== undefined ? { maxRetries: options.maxRetries } : {}),
     });
   } catch (error) {
     const env = getEnv();

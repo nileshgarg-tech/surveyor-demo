@@ -35,6 +35,8 @@ export type GeminiGenerateOptions<T> = {
   store?: boolean;
   enableGrounding?: boolean;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  maxRetries?: number;
 };
 
 let validationPromise: Promise<void> | undefined;
@@ -102,8 +104,9 @@ async function callGemini<T>(
       headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
       body: JSON.stringify(request),
     },
-    maxRetries: getEnv().MAX_PROVIDER_RETRIES,
+    maxRetries: options.maxRetries ?? getEnv().MAX_PROVIDER_RETRIES,
     safeToRetry: true,
+    ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
   });
 

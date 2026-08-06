@@ -69,14 +69,6 @@ const envSchema = z
         message: "The study cap cannot exceed the event cap",
       });
     }
-    const fallbackPair = [value.OPENAI_API_KEY, value.OPENAI_FALLBACK_MODEL];
-    if (fallbackPair.filter(Boolean).length === 1) {
-      context.addIssue({
-        code: "custom",
-        path: ["OPENAI_API_KEY"],
-        message: "OpenAI fallback requires both OPENAI_API_KEY and OPENAI_FALLBACK_MODEL",
-      });
-    }
   });
 
 export type AppEnv = z.infer<typeof envSchema>;

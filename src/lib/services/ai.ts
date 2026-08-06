@@ -140,10 +140,11 @@ export async function generateIntakeResponse(options: {
     };
   }
   if (result.kind === "ready") {
+    const deterministicBoolean = hasUnsupportedBooleanLogic(result.brief.targetAudience);
     result = {
       ...result,
       survey: finalizeSurvey(result.survey),
-      unsupportedBooleanLogic: result.unsupportedBooleanLogic ?? hasUnsupportedBooleanLogic(result.brief.targetAudience),
+      unsupportedBooleanLogic: deterministicBoolean && (result.unsupportedBooleanLogic !== false),
     };
   }
   return {
@@ -240,6 +241,8 @@ export async function generateReportNarrative(options: {
       anonymousTextAnswers: options.anonymousTextAnswers,
     })}\nUNTRUSTED_DATA_END`,
     store: false,
+    timeoutMs: 30_000,
+    maxRetries: 1,
   });
   return {
     aggregates,

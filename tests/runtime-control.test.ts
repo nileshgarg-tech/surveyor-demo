@@ -150,7 +150,7 @@ describe("explicit specification gates", () => {
     expect(app).toContain("This audience cannot launch yet.");
     expect(ai).toContain("infer ordinary defaults instead of behaving like a form wizard");
     expect(ai).toContain("Default broad groups such as students or workers to adults");
-    expect(ai).toContain("unsupportedBooleanLogic: result.unsupportedBooleanLogic ?? hasUnsupportedBooleanLogic");
+    expect(ai).toContain("unsupportedBooleanLogic: deterministicBoolean && (result.unsupportedBooleanLogic !== false)");
   });
 
   it("keeps model availability prose out of targeting availability and provider routing", () => {
