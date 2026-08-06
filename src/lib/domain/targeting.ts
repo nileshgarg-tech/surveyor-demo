@@ -253,12 +253,26 @@ export function hasUnsupportedBooleanLogic(request: string): boolean {
   const clauses = normalized.split(/\b(?:or|either)\b/).map((c) => c.trim()).filter(Boolean);
   if (clauses.length <= 1) return false;
 
-  const hasCountryClause = clauses.some((c) => /\b(country|residence|united states|us|uk|canada)\b/.test(c));
-  const hasAgeClause = clauses.some((c) => /\b(age|aged|years|adult)\b/.test(c));
-  const hasWorkClause = clauses.some((c) => /\b(employed|work|employment|job)\b/.test(c));
+  const getDimension = (clause: string) => {
+    const hasCountry = /\b(country|residence|united states|us|uk|canada|britain)\b/.test(clause);
+    const hasAge = /\b(age|aged|years|adult)\b/.test(clause);
+    const hasWork = /\b(employed|work|employment|job|full-time|part-time)\b/.test(clause);
+    const set = new Set<string>();
+    if (hasCountry) set.add("country");
+    if (hasAge) set.add("age");
+    if (hasWork) set.add("work");
+    return set;
+  };
 
-  const dimensionCount = [hasCountryClause, hasAgeClause, hasWorkClause].filter(Boolean).length;
-  return dimensionCount > 1;
+  for (let i = 0; i < clauses.length - 1; i++) {
+    const dim1 = getDimension(clauses[i]!);
+    const dim2 = getDimension(clauses[i + 1]!);
+    if (dim1.size === 1 && dim2.size === 1 && [...dim1][0] !== [...dim2][0]) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function availabilityLabel(plan: Pick<TargetingPlan, "availability">): string {

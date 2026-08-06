@@ -7,7 +7,7 @@ The project demonstrates how an AI assistant can support the operational parts o
 ## What it demonstrates
 
 - A conversational intake flow that turns a research goal into a structured survey brief.
-- A three-to-five-question survey builder with validation for wording, response options, duration, reward, and research-contact requirements.
+- A two-to-six-question survey builder with validation for wording, response options, duration, reward, and research-contact requirements.
 - Catalog-grounded Prolific targeting: supported audiences use exact provider filters; approximations remain visible and require explicit acceptance.
 - A review screen that shows the actual recruited audience, participant-facing questions, estimated completion time, reward, and provider-confirmed total cost before launch.
 - Event-link access that uses a signed, short-lived browser session instead of accounts, sign-up, or a PIN.
@@ -33,7 +33,7 @@ Supabase is the source of truth for the lifecycle. The browser communicates thro
 Surveyor treats a paid study as a stateful workflow rather than a simple API request.
 
 - Budget is reserved using the provider-confirmed USD cost, then either committed or safely voided.
-- Study and event spend caps, a maximum of three concurrent studies, and a one-study-per-event-session limit are enforced in the database.
+- Study and event spend caps, a configurable concurrent-study ceiling (up to 10), and a one-study-per-event-session limit are enforced in the database.
 - Provider operations use idempotency keys, exact reconciliation, bounded retry rules, and recovery jobs for stale launches.
 - An unpublished draft may receive at most two total publish attempts. Automatic abandonment requires confirmed draft deletion.
 - Publishing, pausing, stopping, approval handling, slot release, and report creation are evidence-gated database transitions.
@@ -69,10 +69,12 @@ Run the full local verification gate with:
 npm run verify
 ```
 
-This runs strict TypeScript checking, ESLint, 125 Vitest tests, and an optimized production build. The test suite covers survey structure, provider payload validation, targeting behavior, budget/concurrency invariants, event-session security, participant privacy, idempotency, stale-launch recovery, and report generation.
+This runs strict TypeScript checking, ESLint, 129 Vitest tests, and an optimized production build. The test suite covers survey structure, provider payload validation, targeting behavior, budget/concurrency invariants, event-session security, participant privacy, idempotency, stale-launch recovery, and report generation.
 
 The repository also includes [ACCEPTANCE_VERIFICATION.md](ACCEPTANCE_VERIFICATION.md), which distinguishes locally proven behavior from criteria that require configured third-party services and a real paid Prolific run.
 
 ## Demo boundaries
 
-This repository contains no credentials, deployed environment, or live Prolific study. The production-facing integrations are implemented and tested with controlled provider responses, but final live validation requires a configured Supabase project, authorized provider credentials, an HTTPS deployment, and owner approval before any paid launch.
+This project is deployed with a configured Supabase project, live Gemini/OpenAI credentials, and an authorized Prolific workspace, so studies launched through it recruit real participants and spend real budget. The controls above are not theoretical: the per-study and per-event spend caps, the concurrent-study ceiling, and the one-study-per-event-session limit are what keep a poster-demo session from over-spending or over-launching against the live Prolific balance.
+
+The repository itself contains no committed credentials — configuration is supplied via environment variables (see `.env.example`) and owner approval is still required before any paid launch is authorized on a given deployment.
