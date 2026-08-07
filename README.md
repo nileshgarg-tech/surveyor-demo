@@ -44,7 +44,7 @@ Surveyor treats a paid study as a stateful workflow rather than a simple API req
 
 - Next.js 16, React 19, TypeScript, and Zod
 - Supabase/PostgreSQL with SQL migrations, RPCs, locks, and forced RLS
-- Gemini for structured intake and narrative reporting, with optional explicit OpenAI fallback
+- Gemini for structured intake, with optional explicit OpenAI fallback; narrative reporting tries OpenAI first (Gemini latency was blocking reports) with Gemini as the bounded fallback
 - Prolific API adapter for targeting, pricing, draft creation, publishing, status checks, and participant completion handling
 - Vitest and ESLint for automated verification
 

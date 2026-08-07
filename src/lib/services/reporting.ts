@@ -120,7 +120,7 @@ async function generateClaimedReport(claim: ReportClaim): Promise<void> {
                 retryable: true,
               }),
             ),
-          70_000,
+          95_000,
         ),
       ),
     ]);

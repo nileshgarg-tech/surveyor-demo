@@ -18,9 +18,16 @@ export async function generateStructured<T>(options: {
   openaiFetch?: typeof fetch;
   timeoutMs?: number;
   maxRetries?: number;
+  /** Which provider to try first. Defaults to "gemini". "openai" only takes effect when OpenAI is configured. */
+  primary?: "gemini" | "openai";
+  openaiTimeoutMs?: number;
+  openaiMaxRetries?: number;
 }): Promise<StructuredGeneration<T>> {
-  try {
-    return await generateWithGemini({
+  const env = getEnv();
+  const openaiConfigured = Boolean(env.OPENAI_API_KEY);
+
+  const callGemini = () =>
+    generateWithGemini({
       schemaName: options.schemaName,
       schema: options.schema,
       validator: options.validator,
@@ -33,17 +40,31 @@ export async function generateStructured<T>(options: {
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.maxRetries !== undefined ? { maxRetries: options.maxRetries } : {}),
     });
-  } catch (error) {
-    const env = getEnv();
-    const fallbackConfigured = Boolean(env.OPENAI_API_KEY);
-    if (!(error instanceof ProviderError) || !error.fallbackEligible || !fallbackConfigured) throw error;
-    return generateWithOpenAI({
+
+  const callOpenAi = () =>
+    generateWithOpenAI({
       schemaName: options.schemaName,
       schema: options.schema,
       validator: options.validator,
       systemInstruction: options.systemInstruction,
       input: options.input,
       ...(options.openaiFetch ? { fetchImpl: options.openaiFetch } : {}),
+      ...(options.openaiTimeoutMs !== undefined ? { timeoutMs: options.openaiTimeoutMs } : {}),
+      ...(options.openaiMaxRetries !== undefined ? { maxRetries: options.openaiMaxRetries } : {}),
     });
+
+  if (options.primary === "openai" && openaiConfigured) {
+    try {
+      return await callOpenAi();
+    } catch {
+      return callGemini();
+    }
+  }
+
+  try {
+    return await callGemini();
+  } catch (error) {
+    if (!(error instanceof ProviderError) || !error.fallbackEligible || !openaiConfigured) throw error;
+    return callOpenAi();
   }
 }

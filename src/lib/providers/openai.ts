@@ -21,6 +21,8 @@ export async function generateWithOpenAI<T>(options: {
   systemInstruction: string;
   input: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  maxRetries?: number;
 }): Promise<StructuredGeneration<T>> {
   const env = requireLiveConfig(["OPENAI_API_KEY"]);
   const model = getEnv().OPENAI_FALLBACK_MODEL ?? "gpt-5.6-luna";
@@ -53,8 +55,9 @@ export async function generateWithOpenAI<T>(options: {
           },
         }),
       },
-      maxRetries: getEnv().MAX_PROVIDER_RETRIES,
+      maxRetries: options.maxRetries ?? getEnv().MAX_PROVIDER_RETRIES,
       safeToRetry: true,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     });
     const parsed = responseSchema.safeParse(response.body);

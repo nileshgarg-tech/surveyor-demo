@@ -244,7 +244,10 @@ export async function generateReportNarrative(options: {
       anonymousTextAnswers: options.anonymousTextAnswers,
     })}\nUNTRUSTED_DATA_END`,
     store: false,
-    timeoutMs: 30_000,
+    primary: "openai",
+    openaiTimeoutMs: 20_000,
+    openaiMaxRetries: 1,
+    timeoutMs: 20_000,
     maxRetries: 1,
   });
   return {

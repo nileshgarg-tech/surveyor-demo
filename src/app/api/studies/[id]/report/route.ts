@@ -6,7 +6,7 @@ import { requireResearcherStudy } from "@/lib/security/auth";
 import { parseJsonBody } from "@/lib/security/request";
 import { maybeStartReport, retryBlockedReport } from "@/lib/services/reporting";
 
-export const maxDuration = 90;
+export const maxDuration = 110;
 
 const bodySchema = z.object({ requestId: z.uuid() }).strict();
 

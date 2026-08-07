@@ -656,7 +656,7 @@ Validate centrally, require long random secrets, and derive purpose-specific key
 - Preserve responses through report failures.
 - Use `after()` only after durable state is written; recover dropped background work from that state.
 - Recover stale report claims with compare-and-set and bounded attempts.
-- Retry Gemini before optional OpenAI fallback.
+- Retry Gemini before optional OpenAI fallback, except for report narratives: OpenAI is tried first there (bounded to ~20s × 1 retry) with Gemini as the bounded safety net, since Gemini latency was the observed cause of slow/blocked reports (behavior changed 2026-08-07).
 - If both fail, persist state and expose retry.
 - Reconstruct experience from Supabase after refresh.
 - Continue accepting and paying verified pre-pause participants after manual finish.
