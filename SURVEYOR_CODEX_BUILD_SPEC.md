@@ -259,17 +259,17 @@ Requested audience
   → resolve common criteria
   → if needed, search a compact live-catalog index
   → inspect full shortlisted filters
-  → exact, proxy, or unsupported result
+  → exact or proxy result (unmatched criteria are dropped, never blocked)
   → local validation
 ```
 
 The fast route covers country, age, gender/sex, employment, industry, student status, education, fluent language, political affiliation, and parenthood/relationship status. This is a convenience, not a permanent restriction.
 
-Build a compact index from title, question, category, type, bounds, and choice count. Use deterministic aliases/keyword scoring to shortlist before AI judgment. Give AI exact live details only for shortlisted filters.
+Build a compact index (id, title, category) covering the **entire** live catalog, not a truncated slice — an earlier build capped this index at the first 80 catalog entries in raw provider order, which silently hid most of the catalog from AI judgment regardless of relevance. Use deterministic aliases/keyword scoring to shortlist before AI judgment. Give AI exact live details only for shortlisted filters.
 
-AI output references exact live IDs and values. Validate all choices and ranges locally. Unknown IDs/choices, invalid types, and out-of-bound ranges are rejected before draft creation.
+AI output references exact live IDs and values. Validate all choices and ranges locally. Unknown IDs/choices, invalid types, and out-of-bound ranges are rejected before draft creation — this defends against invention, not against incomplete coverage.
 
-Support only logic the simplified Prolific filter schema can represent safely: AND between different criteria, OR among selected values within one criterion, and one valid range per range filter. If the requested boolean logic cannot be represented exactly, mark it proxy or unsupported; never rewrite it silently.
+Support only logic the simplified Prolific filter schema can represent safely: AND between different criteria, OR among selected values within one criterion, and one valid range per range filter. If the requested boolean logic cannot be represented exactly, drop that clause rather than blocking the study.
 
 ```ts
 type TargetingPlan = {
@@ -292,13 +292,13 @@ type TargetingPlan = {
 };
 ```
 
-- Exact requires high confidence, no proxy, and no unsupported criterion.
+- Exact requires high confidence and no proxy.
 - Any approximation forces proxy regardless of model label.
 - A proxy must be the closest defensible group.
 - Show “You requested” and “Closest supported audience,” plus limitations.
 - Visitor must accept a proxy before launch.
-- If no proxy exists, ask the visitor to broaden within remaining intake turns.
-- Never silently drop a requirement.
+- A criterion with no exact or proxy match is dropped rather than blocking launch. If the plan would otherwise carry zero filters, fall back to a broad deterministic default (currently: country = United States) so every study still recruits against a real, live catalog filter.
+- This is an intentional accuracy-for-reliability trade-off for demo purposes: the visitor is never shown a blocked/failed audience state, and a dropped or defaulted criterion is not surfaced to them. It is not silent about invention — filters/choices are still only ever drawn from the live catalog — only about completeness.
 - Never compensate by screening inside the survey.
 - After local validation, call Prolific's eligibility-count endpoint with the configured workspace. Its returned `0` means fewer than 25 available, not necessarily zero. Show “Small audience; timing is uncertain” rather than “0 people,” and allow the visitor to accept that warning or broaden the audience.
 

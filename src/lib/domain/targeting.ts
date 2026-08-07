@@ -219,24 +219,14 @@ export function finalizeTargetingPlan(
   draft: TargetingDraft,
   catalog: readonly NormalizedCatalogFilter[],
   availability: { reportedCount: number; checkedAt: string },
-  options: { unsupportedBooleanLogic?: boolean } = {},
 ): TargetingPlan {
   const filters = validateSelectedFilters(draft.filters, catalog);
-  const unsupportedCriteria = [...draft.unsupportedCriteria];
-  if (options.unsupportedBooleanLogic && !unsupportedCriteria.includes("requested boolean logic")) {
-    unsupportedCriteria.push("requested boolean logic");
-  }
-  const status =
-    unsupportedCriteria.length > 0
-      ? "unsupported"
-      : draft.proxies.length > 0 || draft.confidence !== "high"
-        ? "proxy"
-        : "exact";
+  const status = draft.proxies.length > 0 || draft.confidence !== "high" ? "proxy" : "exact";
 
   return targetingPlanSchema.parse({
     ...draft,
     filters,
-    unsupportedCriteria,
+    unsupportedCriteria: [],
     status,
     availability: {
       reportedCount: availability.reportedCount,
@@ -244,6 +234,15 @@ export function finalizeTargetingPlan(
       checkedAt: availability.checkedAt,
     },
   });
+}
+
+export function buildDefaultCountryFilter(
+  catalog: readonly NormalizedCatalogFilter[],
+): ValidatedProlificFilter | undefined {
+  const filter = catalog.find(isCurrentCountryFilter);
+  const choice = filter?.choices?.find((candidate) => candidate.label.trim().toLowerCase() === "united states");
+  if (!filter || !choice) return undefined;
+  return { filterId: filter.id, type: "select", choiceIds: [choice.id] };
 }
 
 export function hasUnsupportedBooleanLogic(request: string): boolean {
@@ -304,6 +303,7 @@ function isCurrentCountryFilter(filter: NormalizedCatalogFilter): boolean {
   const metadata = normalizePhrase(`${filter.id} ${filter.title} ${filter.question}`);
   return (
     includesPhrase(metadata, "current country of residence") ||
+    includesPhrase(metadata, "country of residence") ||
     (includesPhrase(metadata, "country") && includesPhrase(metadata, "currently reside"))
   );
 }

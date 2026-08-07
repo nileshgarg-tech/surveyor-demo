@@ -6,7 +6,7 @@ This file distinguishes implementation evidence from the live checks that are in
 
 ## Verification runs
 
-- `npm run verify`: passed: strict TypeScript, ESLint, 128/128 Vitest tests, optimized Next.js production build.
+- `npm run verify`: passed: strict TypeScript, ESLint, 130/130 Vitest tests, optimized Next.js production build.
 - PostgreSQL 17 clean run: all three migrations applied with `ON_ERROR_STOP=1`.
 - SQL lifecycle assertions: passed: bounded publish recovery, deletion-only abandonment, PAUSE/STOP evidence-gated retry, slot-release race exclusion, and event-counter audit.
 - Runtime-control assertions: passed: stricter environment settings synchronized atomically; values beyond $25/$500/3 studies were rejected.
@@ -21,7 +21,7 @@ This file distinguishes implementation evidence from the live checks that are in
 | A2 | Intake may clarify for up to five user messages | Verified | `intakeStateSchema`, database trigger/check, route CAS, and `runtime-control.test.ts` prove assistant turns do not count and a sixth user turn fails. |
 | A3 | Common audiences map to current filters | Live gate | Alias shortlisting, detailed workspace catalog pagination, exact live-ID validation, and adapter tests pass. A current real workspace catalog check awaits live configuration. |
 | A4 | Niche approximations show proxy acceptance | Verified implementation | Targeting tests force approximation to `proxy`; preview renders requested/recruited groups, limitations, and persisted acceptance. Live Gemini example awaits configuration. |
-| A5 | Unsupported audiences cannot invent filters | Verified | Unknown filters/choices/types/ranges fail locally; unsupported boolean logic and criteria remain explicit and cannot reserve budget. |
+| A5 | Unsupported audiences cannot invent filters | Verified, behavior changed 2026-08-07 | Unknown filters/choices/types/ranges still fail local validation and can never reach a draft. However, unsupported boolean logic and unmatched criteria are now dropped (not surfaced) rather than blocking launch; if that leaves zero filters, targeting silently falls back to a broad default (country = United States). This is an intentional demo-reliability trade-off — see `SURVEYOR_CODEX_BUILD_SPEC.md` Section 10 — and reverses the "remains explicit / cannot reserve budget" guarantee this row previously verified. |
 | A6 | QR event link launches without signup/PIN | Verified implementation / deployment gate | Timing-safe fragment exchange, signed HttpOnly cookie, fragment removal, and launch authority are tested. A deployed QR scan awaits approval. |
 | A7 | Base-URL visitors cannot spend | Verified | Launch route requires a valid event session linked to the study; database reservation independently rejects missing/mismatched/expired sessions. |
 | A8 | Preview shows questions, actual audience, time, reward, and total | Verified | Preview component renders every field and provider-confirmed option costs; responsive render passed. |
@@ -38,7 +38,7 @@ This file distinguishes implementation evidence from the live checks that are in
 | A19 | Finished studies release concurrency without erasing committed spend | Verified | Evidence-gated slot RPC and counter audit prove slot release is independent of lifetime committed budget. |
 | A20 | Dropped reports recover without an open page | Verified | The protected five-minute GitHub Actions workflow invokes the bounded internal recovery endpoint, which directly recovers stale/ready reports with locked claims, bounded attempts, heartbeats, and per-row isolation. |
 | A21 | Refresh/retry cannot duplicate spend, drafts, responses, or reports | Verified | Unique keys, row locks, compare-and-set transitions, request fingerprints, signed restoration, and idempotency tests cover all four resources. |
-| A22 | Typecheck, lint, tests, and production build pass | Verified | `npm run verify` passed with 125 tests across nine files. |
+| A22 | Typecheck, lint, tests, and production build pass | Verified | `npm run verify` passed with 130 tests across nine files. |
 | A23 | Poster screen and participant phones are usable | Partially verified / live gate | Desktop and phone prompt renders passed; responsive/focus/reduced-motion rules exist. Full participant/report device rehearsal awaits configured deployment and live data. |
 
 ## Required-test coverage

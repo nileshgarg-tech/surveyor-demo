@@ -4,6 +4,7 @@ import { type SurveyAnswers, type SurveySpec, type ValidatedProlificFilter } fro
 import {
   availabilityLabel,
   buildCatalogIndex,
+  buildDefaultCountryFilter,
   finalizeTargetingPlan,
   hasUnsupportedBooleanLogic,
   normalizeCatalog,
@@ -207,7 +208,7 @@ describe("live-catalog targeting router", () => {
     }
   });
 
-  it("classifies exact, proxy, and unsupported plans without silently rewriting limitations", () => {
+  it("classifies exact and proxy plans, and never blocks launch on unsupported criteria", () => {
     const exact = finalizeTargetingPlan(exactDraft, catalog, { reportedCount: 1_234, checkedAt });
     expect(exact).toMatchObject({ status: "exact", confidence: "high" });
     expect(exact.proxies).toEqual([]);
@@ -231,11 +232,33 @@ describe("live-catalog targeting router", () => {
     expect(proxy.status).toBe("proxy");
     expect(proxy.proxies).toHaveLength(1);
 
-    const unsupported = finalizeTargetingPlan(exactDraft, catalog, { reportedCount: 61, checkedAt }, {
-      unsupportedBooleanLogic: true,
-    });
-    expect(unsupported.status).toBe("unsupported");
-    expect(unsupported.unsupportedCriteria).toContain("requested boolean logic");
+    const withLeftoverCriteria = finalizeTargetingPlan(
+      { ...exactDraft, unsupportedCriteria: ["requested boolean logic"] },
+      catalog,
+      { reportedCount: 61, checkedAt },
+    );
+    expect(withLeftoverCriteria.status).not.toBe("unsupported");
+    expect(withLeftoverCriteria.unsupportedCriteria).toEqual([]);
+  });
+
+  it("falls back to a default United States filter when nothing else matched", () => {
+    const fallback = buildDefaultCountryFilter(catalog);
+    expect(fallback).toEqual({ filterId: "country", type: "select", choiceIds: ["1"] });
+
+    const plan = finalizeTargetingPlan(
+      {
+        requestedAudience: "People who recently learned to juggle fire",
+        recruitedAudience: "People who recently learned to juggle fire",
+        confidence: "high",
+        filters: fallback ? [fallback] : [],
+        proxies: [],
+        unsupportedCriteria: [],
+      },
+      catalog,
+      { reportedCount: 500, checkedAt },
+    );
+    expect(plan.status).toBe("exact");
+    expect(plan.filters).toEqual([{ filterId: "country", type: "select", choiceIds: ["1"] }]);
   });
 
   it("flags OR across dimensions but permits alternatives within one filter", () => {

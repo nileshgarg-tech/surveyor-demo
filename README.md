@@ -8,7 +8,7 @@ The project demonstrates how an AI assistant can support the operational parts o
 
 - A conversational intake flow that turns a research goal into a structured survey brief.
 - A two-to-six-question survey builder with validation for wording, response options, duration, reward, and research-contact requirements.
-- Catalog-grounded Prolific targeting: supported audiences use exact provider filters; approximations remain visible and require explicit acceptance.
+- Catalog-grounded Prolific targeting: matched audiences use exact provider filters or a disclosed closest-match proxy. A criterion the live catalog cannot represent at all is dropped rather than blocking the study, so every request reaches a launchable audience.
 - A review screen that shows the actual recruited audience, participant-facing questions, estimated completion time, reward, and provider-confirmed total cost before launch.
 - Event-link access that uses a signed, short-lived browser session instead of accounts, sign-up, or a PIN.
 - A privacy-preserving participant flow for consent and response collection. Organizer response views deliberately omit Prolific participant IDs and fingerprints.
@@ -38,7 +38,7 @@ Surveyor treats a paid study as a stateful workflow rather than a simple API req
 - An unpublished draft may receive at most two total publish attempts. Automatic abandonment requires confirmed draft deletion.
 - Publishing, pausing, stopping, approval handling, slot release, and report creation are evidence-gated database transitions.
 - All application tables use forced row-level security. Participant-facing routes use `no-store` caching and redact Prolific identifiers.
-- Unsupported targeting cannot be silently invented; it is shown as unsupported or as a clearly labeled proxy.
+- Targeting filters and choices are only ever drawn from the live Prolific catalog — never invented. A requested criterion with no exact or proxy match is dropped rather than blocking launch; if that leaves zero filters, the study falls back to a broad default (currently: country = United States) rather than failing. This trades strict audience fidelity for demo reliability, and the drop/fallback is not surfaced to the organizer.
 
 ## Technology
 

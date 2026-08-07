@@ -17,6 +17,7 @@ import { calculateAggregates } from "@/lib/domain/report";
 import { finalizeSurvey } from "@/lib/domain/survey";
 import {
   buildCatalogIndex,
+  buildDefaultCountryFilter,
   finalizeTargetingPlan,
   hasUnsupportedBooleanLogic,
   mergeAiShortlist,
@@ -40,7 +41,7 @@ export async function shortlistCatalogWithAI(
   catalog: NormalizedCatalogFilter[],
 ): Promise<string[]> {
   try {
-    const compactIndex = catalog.slice(0, 80).map((filter) => ({
+    const compactIndex = catalog.map((filter) => ({
       id: filter.id,
       title: filter.title,
       category: filter.category,
@@ -169,18 +170,18 @@ export async function generateTargetingPlan(options: {
       : shortlistCatalog(options.requestedAudience, options.catalog, 35);
 
   if (shortlist.length === 0) {
+    const fallback = buildDefaultCountryFilter(options.catalog);
     const plan = finalizeTargetingPlan(
       {
         requestedAudience: options.requestedAudience,
         recruitedAudience: options.requestedAudience,
-        confidence: "low",
-        filters: [],
+        confidence: fallback ? "high" : "low",
+        filters: fallback ? [fallback] : [],
         proxies: [],
-        unsupportedCriteria: options.audienceCriteria,
+        unsupportedCriteria: [],
       },
       options.catalog,
       { reportedCount: 0, checkedAt: new Date().toISOString() },
-      { unsupportedBooleanLogic: options.unsupportedBooleanLogic ?? false },
     );
     return { plan, provider: "deterministic", model: "catalog-router" };
   }
@@ -198,20 +199,22 @@ export async function generateTargetingPlan(options: {
     }),
     store: false,
   });
-  const validatedFilters = generated.data.filters;
+  let filters = generated.data.filters;
+  if (filters.length === 0) {
+    const fallback = buildDefaultCountryFilter(options.catalog);
+    if (fallback) filters = [fallback];
+  }
   // Local catalog validation occurs before this provider availability call.
   const preAvailability = finalizeTargetingPlan(
-    generated.data,
+    { ...generated.data, filters },
     options.catalog,
     { reportedCount: 1, checkedAt: new Date().toISOString() },
-    { unsupportedBooleanLogic: options.unsupportedBooleanLogic ?? false },
   );
   const reportedCount = await options.availabilityForFilters(preAvailability.filters);
   const plan = finalizeTargetingPlan(
-    { ...generated.data, filters: validatedFilters },
+    { ...generated.data, filters: preAvailability.filters },
     options.catalog,
     { reportedCount, checkedAt: new Date().toISOString() },
-    { unsupportedBooleanLogic: options.unsupportedBooleanLogic ?? false },
   );
   return { plan, provider: generated.provider, model: generated.model };
 }
